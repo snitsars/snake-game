@@ -2,14 +2,14 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Моя Змійка: Бонусний Шанс</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Змійка: iPhone Edition</title>
     <style>
         body {
             margin: 0;
             background-color: #1a1a1a;
             color: white;
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -17,51 +17,62 @@
             min-height: 100vh;
             overflow: hidden;
             touch-action: manipulation;
+            padding: 10px;
+            box-sizing: border-box;
         }
+        /* Оптимізована верхня панель */
         .header-panel {
-            width: 400px;
+            width: 100%;
+            max-width: 400px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
-            padding: 0 5px;
-            box-sizing: border-box;
+            margin-bottom: 12px;
         }
         #score-board {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: bold;
         }
-        .pause-btn {
-            background-color: #555;
+        .nav-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        .header-btn {
+            background-color: #333;
             color: white;
             border: none;
-            padding: 8px 18px;
-            font-size: 16px;
+            padding: 8px 14px;
+            font-size: 14px;
             font-weight: bold;
-            border-radius: 15px;
+            border-radius: 12px;
             cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
-        .pause-btn:active {
-            background-color: #777;
+        .header-btn:active {
+            background-color: #555;
         }
+        /* Адаптивний контейнер для екрана iPhone */
         .canvas-container {
             position: relative;
-            width: 400px;
-            height: 400px;
+            width: 95vw;
+            max-width: 400px;
+            aspect-ratio: 1 / 1;
         }
         canvas {
+            width: 100%;
+            height: 100%;
             background-color: #111;
-            border: 4px solid #333;
-            border-radius: 8px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            border: 3px solid #333;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.6);
+            display: block;
+            box-sizing: border-box;
         }
         #start-screen {
             position: absolute;
-            top: 0; left: 0; width: 400px; height: 400px;
+            top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.85);
-            border: 4px solid transparent;
-            box-sizing: border-box;
-            border-radius: 8px;
+            border-radius: 12px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -72,23 +83,24 @@
             background-color: #4CAF50;
             color: white;
             border: none;
-            padding: 15px 35px;
-            font-size: 22px;
+            padding: 14px 32px;
+            font-size: 20px;
             font-weight: bold;
-            border-radius: 25px;
+            border-radius: 22px;
             cursor: pointer;
             box-shadow: 0 4px 10px rgba(76, 175, 80, 0.4);
         }
+        /* Ергономічний джойстик */
         .controls {
             margin-top: 15px;
             display: grid;
             grid-template-columns: repeat(3, 75px);
             grid-template-rows: repeat(2, 75px);
-            gap: 10px;
+            gap: 8px;
             justify-content: center;
         }
         .btn {
-            background-color: #333;
+            background-color: #2b2b2b;
             color: white;
             border: none;
             border-radius: 50%;
@@ -97,10 +109,10 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
         }
         .btn:active {
-            background-color: #555;
+            background-color: #444;
         }
         #btn-up { grid-column: 2; grid-row: 1; }
         #btn-left { grid-column: 1; grid-row: 2; }
@@ -112,7 +124,10 @@
 
     <div class="header-panel">
         <div id="score-board">Рахунок: <span id="score">0</span></div>
-        <button class="pause-btn" id="pause-button">ПАУЗА ⏸️</button>
+        <div class="nav-buttons">
+            <button class="header-btn" id="restart-button-top">РЕСТАРТ 🔄</button>
+            <button class="header-btn" id="pause-button">ПАУЗА ⏸️</button>
+        </div>
     </div>
     
     <div class="canvas-container">
@@ -136,6 +151,7 @@
         const startScreen = document.getElementById("start-screen");
         const startButton = document.getElementById("start-button");
         const pauseButton = document.getElementById("pause-button");
+        const restartButtonTop = document.getElementById("restart-button-top");
 
         const gridSize = 16; 
         const tileCount = canvas.width / gridSize; 
@@ -148,13 +164,12 @@
         let dy = 0;
         let score = 0;
         let gameInterval = null;
-        let customItemTimer = null; // Таймер зникнення кастомного об'єкта
+        let customItemTimer = null; 
         let isPlaying = false;
         let isPaused = false;
         let segmentsToAdd = 0;
         let animationFrame = 0;
 
-        // Набір кастомних бонусів із вагою (рідкістю)
         const pool = [
             { emoji: '🍌', type: 'booster', value: 2, weight: 20 },
             { emoji: '🍊', type: 'booster', value: 3, weight: 18 },
@@ -197,15 +212,23 @@
             gameInterval = setInterval(update, 130);
         }
 
+        function forceRestart() {
+            clearInterval(gameInterval);
+            initGame();
+            isPlaying = true;
+            startScreen.style.display = "none";
+            gameInterval = setInterval(update, 130);
+        }
+
         function togglePause() {
             if (!isPlaying) return;
             if (!isPaused) {
                 isPaused = true;
                 clearInterval(gameInterval);
-                pauseButton.innerText = "ПРОДОВЖИТИ ▶️";
-                ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+                pauseButton.innerText = "ГРАТИ ▶️";
+                ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.font = "30px Arial";
+                ctx.font = "bold 30px Arial";
                 ctx.fillStyle = "white";
                 ctx.textAlign = "center";
                 ctx.fillText("ПАУЗА", canvas.width / 2, canvas.height / 2);
@@ -250,18 +273,15 @@
             return { ...pool[0] };
         }
 
-        // ЛОГІКА ХВИЛІ: Поява яблука + розрахунок шансу на бонус
         function startNewRound() {
             clearCustomItem();
 
-            // 1. Спавнимо обов'язкове яблуко
             let applePos = getRandPos();
             while (isOccupied(applePos)) { applePos = getRandPos(); }
             regularApple.x = applePos.x;
             regularApple.y = applePos.y;
 
-            // 2. Рахуємо шанс появи бонусу (наприклад, 30% що бонус взагалі з'явиться в цьому раунді)
-            const spawnChance = Math.random() < 0.30; 
+            const spawnChance = Math.random() < 0.35; 
             
             if (spawnChance) {
                 let target = getRandomItemFromPool();
@@ -275,10 +295,9 @@
                 target.y = customPos.y;
                 customItem = target;
 
-                // ОБМЕЖЕННЯ ЧАСУ: Бонус зникне сам через 5 секунд (5000 мс), якщо його не з'їсти
                 customItemTimer = setTimeout(() => {
                     if (isPlaying && !isPaused && customItem) {
-                        customItem = null; // Бонус просто випарувався, гра триває
+                        customItem = null; 
                     }
                 }, 5000);
             }
@@ -306,12 +325,10 @@
             snake.unshift(head);
             let roundFinished = false;
 
-            // Перевірка 1: З'їли звичайне яблуко
             if (head.x === regularApple.x && head.y === regularApple.y) {
                 score += regularApple.value;
                 roundFinished = true;
             } 
-            // Перевірка 2: З'їли бонус/фастфуд (поки він активний)
             else if (customItem && head.x === customItem.x && head.y === customItem.y) {
                 roundFinished = true;
                 if (customItem.type === 'booster') {
@@ -327,7 +344,7 @@
 
             if (roundFinished) {
                 scoreElement.innerText = score;
-                startNewRound(); // Скидаємо все старе та починаємо новий раунд
+                startNewRound(); 
             } else {
                 if (segmentsToAdd > 0) {
                     segmentsToAdd--;
@@ -349,7 +366,6 @@
             ctx.fillStyle = "#111";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Малюємо змійку
             snake.forEach((segment, index) => {
                 let x = segment.x * gridSize;
                 let y = segment.y * gridSize;
@@ -405,15 +421,12 @@
                 ctx.restore();
             });
 
-            // Рендер їжі
             ctx.font = `${gridSize}px Arial`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
 
-            // Яблуко малюється на початку кожної хвилі
             ctx.fillText(regularApple.emoji, regularApple.x * gridSize + gridSize/2, regularApple.y * gridSize + gridSize/2);
             
-            // Якщо випав бонус і час не закінчився, малюємо його
             if (customItem) {
                 ctx.fillText(customItem.emoji, customItem.x * gridSize + gridSize/2, customItem.y * gridSize + gridSize/2);
             }
@@ -432,6 +445,7 @@
         
         pauseButton.addEventListener("click", togglePause);
         startButton.addEventListener("click", startGame);
+        restartButtonTop.addEventListener("click", forceRestart);
 
         document.addEventListener("keydown", (e) => {
             if (e.key === "ArrowUp" || e.key === "w") changeDirection(0, -1);
@@ -439,6 +453,7 @@
             if (e.key === "ArrowLeft" || e.key === "a") changeDirection(-1, 0);
             if (e.key === "ArrowRight" || e.key === "d") changeDirection(1, 0);
             if (e.key === "p" || e.key === "P") togglePause();
+            if (e.key === "r" || e.key === "R") forceRestart();
         });
 
         initGame();
