@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Змійка: Максимальний Простір</title>
+    <title>Змійка: iPhone iOS Оптимізація</title>
     <style>
         body {
             margin: 0;
@@ -13,14 +13,16 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            /* Використовуємо динамічну висоту dvh для уникнення багів Safari */
             height: 100vh;
-            /* Враховуємо безпечні зони iPhone */
-            padding: calc(10px + env(safe-area-inset-top)) 15px calc(10px + env(safe-area-inset-bottom)) 15px;
+            height: 100dvh;
+            padding: 0 15px;
             box-sizing: border-box;
             overflow: hidden;
             touch-action: manipulation;
         }
 
+        /* Верхня панель із безпечним відступом від годинника iPhone */
         .header-panel {
             width: 100%;
             max-width: 600px;
@@ -28,6 +30,7 @@
             justify-content: space-between;
             align-items: center;
             flex-shrink: 0;
+            margin-top: 38px; /* Гарантований відступ під статус-бар (годинник/заряд батареї) */
             margin-bottom: 10px;
         }
 
@@ -56,7 +59,7 @@
             background-color: #555;
         }
 
-        /* Контейнер динамічно займає простір, що залишився */
+        /* Ігрове поле гнучко займає простір, що залишився */
         .canvas-container {
             position: relative;
             width: 100%;
@@ -99,10 +102,10 @@
             cursor: pointer;
         }
 
-        /* Піднятий і безпечний мобільний джойстик */
+        /* Компактний джойстик із безпечною зоною знизу */
         .controls {
-            margin-top: 15px;
-            margin-bottom: 25px; /* Захисна зона від нижнього краю екрана/домашньої смуги iPhone */
+            margin-top: 12px;
+            margin-bottom: calc(15px + env(safe-area-inset-bottom)); /* Враховує індикатор Home на iPhone */
             display: grid;
             grid-template-columns: repeat(3, 70px);
             grid-template-rows: repeat(2, 70px);
@@ -133,10 +136,13 @@
         #btn-down { grid-column: 2; grid-row: 2; }
         #btn-right { grid-column: 3; grid-row: 2; }
 
-        /* На ПК приховуємо кнопки */
+        /* На ПК повністю ховаємо джойстик */
         @media (min-width: 768px) {
             .controls {
                 display: none;
+            }
+            .header-panel {
+                margin-top: 15px; /* На ПК статус-бару немає, повертаємо стандартний відступ */
             }
             body {
                 padding: 20px;
