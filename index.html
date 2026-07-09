@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Моя Змійка</title>
+    <title>Моя Змійка Мод</title>
     <style>
         body {
             margin: 0;
@@ -23,11 +23,45 @@
             margin-bottom: 10px;
             font-weight: bold;
         }
+        .canvas-container {
+            position: relative;
+            width: 320px;
+            height: 320px;
+        }
         canvas {
             background-color: #111;
             border: 4px solid #333;
             border-radius: 8px;
             box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
+        /* Екран старту поверх канвасу */
+        #start-screen {
+            position: absolute;
+            top: 0; left: 0; width: 320px; height: 320px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 4px solid transparent;
+            box-sizing: border-box;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+        .start-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 35px;
+            font-size: 22px;
+            font-weight: bold;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(76, 175, 80, 0.4);
+            transition: transform 0.1s;
+        }
+        .start-btn:active {
+            transform: scale(0.95);
         }
         /* Блок кнопок керування для iPhone */
         .controls {
@@ -49,7 +83,6 @@
             align-items: center;
             justify-content: center;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            active-background: #555;
         }
         .btn:active {
             background-color: #555;
@@ -63,7 +96,13 @@
 <body>
 
     <div id="score-board">Рахунок: <span id="score">0</span></div>
-    <canvas id="gameCanvas" width="320" height="320"></canvas>
+    
+    <div class="canvas-container">
+        <canvas id="gameCanvas" width="320" height="320"></canvas>
+        <div id="start-screen">
+            <button class="start-btn" id="start-button">СТАРТ</button>
+        </div>
+    </div>
 
     <div class="controls">
         <button class="btn" id="btn-up">↑</button>
@@ -76,103 +115,194 @@
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
         const scoreElement = document.getElementById("score");
+        const startScreen = document.getElementById("start-screen");
+        const startButton = document.getElementById("start-button");
 
         const gridSize = 16; 
-        const tileCount = canvas.width / gridSize; // 20x20 клітинок
+        const tileCount = canvas.width / gridSize; 
 
-        let snake = [{x: 10, y: 10}];
-        let food = {x: 5, y: 5};
-        let dx = 1; // рух вправо по дефолту
+        let snake = [];
+        let item = { x: 0, y: 0, type: 'booster', emoji: '🍎', value: 1 };
+        let dx = 1; 
         let dy = 0;
         let score = 0;
-        let gameInterval;
+        let gameInterval = null;
+        let isPlaying = false;
+        let segmentsToAdd = 0; // Скільки сегментів треба додати поступово
 
-        function startGame() {
-            gameInterval = setInterval(update, 150); // Швидкість гри (150 мс)
+        // Бази даних їжі (Emoji чудово масштабуються)
+        const boosters = [
+            { emoji: '🍎', min: 2, max: 10 }, { emoji: '🍌', min: 2, max: 10 },
+            { emoji: '🍇', min: 2, max: 10 }, { emoji: '🍓', min: 2, max: 10 },
+            { emoji: '🍉', min: 2, max: 10 }, { emoji: '🍍', min: 2, max: 10 },
+            { emoji: '🍒', min: 2, max: 10 }, { emoji: '🥝', min: 2, max: 10 },
+            { emoji: '🍑', min: 2, max: 10 }, { emoji: '🍊', min: 2, max: 10 }
+        ];
+
+        const decreasors = [
+            { emoji: '🍔', min: 1, max: 10 },
+            { emoji: '🍟', min: 1, max: 10 },
+            { emoji: '🍕', min: 1, max: 10 }
+        ];
+
+        function initGame() {
+            snake = [{x: 10, y: 10}];
+            dx = 1;
+            dy = 0;
+            score = 0;
+            segmentsToAdd = 0;
+            scoreElement.innerText = score;
+            spawnItem();
+            draw();
         }
 
-        function update() {
-            // Рух голови
-            const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+        function startGame() {
+            if (isPlaying) return;
+            initGame();
+            isPlaying = true;
+            startScreen.style.display = "none";
+            gameInterval = setInterval(update, 140);
+        }
 
-            // Перевірка зіткнення зі стінами або хвостом
-            if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount || collision(head)) {
-                alert("Гра закінчена! Ваш рахунок: " + score);
-                resetGame();
+        function gameOver() {
+            isPlaying = false;
+            clearInterval(gameInterval);
+            startButton.innerText = "ГРАТИ ЗНОВУ";
+            startScreen.style.display = "flex";
+        }
+
+        function spawnItem() {
+            // Шанс 75% на корисний фрукт, 25% на фастфуд
+            const isBooster = Math.random() > 0.25;
+            let target;
+
+            if (isBooster) {
+                const b = boosters[Math.floor(Math.random() * boosters.length)];
+                const val = Math.floor(Math.random() * (b.max - b.min + 1)) + b.min;
+                target = { type: 'booster', emoji: b.emoji, value: val };
+            } else {
+                const d = decreasors[Math.floor(Math.random() * decreasors.length)];
+                const val = Math.floor(Math.random() * (d.max - d.min + 1)) + d.min;
+                target = { type: 'decreasor', emoji: d.emoji, value: val };
+            }
+
+            target.x = Math.floor(Math.random() * tileCount);
+            target.y = Math.floor(Math.random() * tileCount);
+
+            // Перевірка, щоб об'єкт не з'явився всередині змійки
+            if (snake.some(s => s.x === target.x && s.y === target.y)) {
+                spawnItem();
                 return;
             }
 
-            snake.unshift(head); // додаємо нову голову
+            item = target;
+        }
 
-            // Перевірка чи з'їла яблуко
-            if (head.x === food.x && head.y === food.y) {
-                score++;
+        function update() {
+            // Нові координати голови
+            let nextX = snake[0].x + dx;
+            let nextY = snake[0].y + dy;
+
+            // Стіни більше не вбивають — змійка проходить крізь них
+            if (nextX < 0) nextX = tileCount - 1;
+            if (nextX >= tileCount) nextX = 0;
+            if (nextY < 0) nextY = tileCount - 1;
+            if (nextY >= tileCount) nextY = 0;
+
+            const head = { x: nextX, y: nextY };
+
+            // Перевірка на самопоїдання
+            if (collision(head)) {
+                gameOver();
+                return;
+            }
+
+            snake.unshift(head);
+
+            // Обробка зіткнення з об'єктом (їжею)
+            if (head.x === item.x && head.y === item.y) {
+                if (item.type === 'booster') {
+                    score += item.value;
+                    segmentsToAdd += (item.value - 1); // -1 бо один сегмент додається автоматично через unshift
+                } else if (item.type === 'decreasor') {
+                    // Зменшуємо рахунок, але не нижче 0
+                    score = Math.max(0, score - item.value);
+                    
+                    // Визначаємо нову довжину: віднімаємо value, але залишаємо мінімум 1 (тільки голову)
+                    let newLength = Math.max(1, snake.length - item.value);
+                    
+                    // Обрізаємо хвіст до потрібного розміру прямо зараз
+                    snake = snake.slice(0, newLength);
+                    segmentsToAdd = 0; // скасовуємо поточний ріст, якщо він був
+                }
+                
                 scoreElement.innerText = score;
-                generateFood();
+                spawnItem();
             } else {
-                snake.pop(); // видаляємо хвіст, якщо не їла
+                // Якщо не їли або ростемо:
+                if (segmentsToAdd > 0) {
+                    segmentsToAdd--; // Не видаляємо хвіст — змійка видовжується
+                } else {
+                    if (snake.length > 1) {
+                        snake.pop(); // Звичайний рух — видаляємо хвіст
+                    }
+                }
             }
 
             draw();
         }
 
         function collision(head) {
+            // Перевірка зіткнення з власним тілом (ігноруємо саму голову при розрахунку)
             return snake.some((segment, index) => index !== 0 && segment.x === head.x && segment.y === head.y);
         }
 
-        function generateFood() {
-            food.x = Math.floor(Math.random() * tileCount);
-            food.y = Math.floor(Math.random() * tileCount);
-            // Перевірка, щоб їжа не спавнилась на змійці
-            if (snake.some(s => s.x === food.x && s.y === food.y)) {
-                generateFood();
-            }
-        }
-
         function draw() {
-            // Очищення екрана
             ctx.fillStyle = "#111";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             // Малюємо змійку
-            ctx.fillStyle = "#4CAF50"; // зелена змійка
             snake.forEach((segment, index) => {
-                // Голова трохи темніша
-                if(index === 0) ctx.fillStyle = "#388E3C";
-                else ctx.fillStyle = "#4CAF50";
-                ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 2, gridSize - 2);
+                ctx.fillStyle = (index === 0) ? "#388E3C" : "#4CAF50";
+                ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 1, gridSize - 1);
             });
 
-            // Малюємо їжу
-            ctx.fillStyle = "#FF5722"; // червоне яблуко
-            ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 2, gridSize - 2);
+            // Малюємо Емодзі (центруємо по клітинці)
+            ctx.font = `${gridSize - 2}px Arial`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(
+                item.emoji, 
+                item.x * gridSize + gridSize / 2, 
+                item.y * gridSize + gridSize / 2
+            );
         }
 
-        function resetGame() {
-            snake = [{x: 10, y: 10}];
-            dx = 1;
-            dy = 0;
-            score = 0;
-            scoreElement.innerText = score;
-            generateFood();
+        // Керування кнопками
+        function changeDirection(newDx, newDy) {
+            if (!isPlaying) return;
+            // Блокування руху у зворотний бік (щоб не їсти себе)
+            if (newDx !== 0 && dx === 0) { dx = newDx; dy = 0; }
+            if (newDy !== 0 && dy === 0) { dx = 0; dy = newDy; }
         }
 
-        // Керування кнопками на екрані (для iPhone)
-        document.getElementById("btn-up").addEventListener("click", () => { if (dy === 0) { dx = 0; dy = -1; } });
-        document.getElementById("btn-down").addEventListener("click", () => { if (dy === 0) { dx = 0; dy = 1; } });
-        document.getElementById("btn-left").addEventListener("click", () => { if (dx === 0) { dx = -1; dy = 0; } });
-        document.getElementById("btn-right").addEventListener("click", () => { if (dx === 0) { dx = 1; dy = 0; } });
+        document.getElementById("btn-up").addEventListener("click", () => changeDirection(0, -1));
+        document.getElementById("btn-down").addEventListener("click", () => changeDirection(0, 1));
+        document.getElementById("btn-left").addEventListener("click", () => changeDirection(-1, 0));
+        document.getElementById("btn-right").addEventListener("click", () => changeDirection(1, 0));
 
-        // Керування клавіатурою (якщо запустите на ПК)
         document.addEventListener("keydown", (e) => {
-            if (e.key === "ArrowUp" && dy === 0) { dx = 0; dy = -1; }
-            if (e.key === "ArrowDown" && dy === 0) { dx = 0; dy = 1; }
-            if (e.key === "ArrowLeft" && dx === 0) { dx = -1; dy = 0; }
-            if (e.key === "ArrowRight" && dx === 0) { dx = 1; dy = 0; }
+            if (e.key === "ArrowUp") changeDirection(0, -1);
+            if (e.key === "ArrowDown") changeDirection(0, 1);
+            if (e.key === "ArrowLeft") changeDirection(-1, 0);
+            if (e.key === "ArrowRight") changeDirection(1, 0);
+            if (e.key === " " || e.key === "Enter") startGame();
         });
 
-        generateFood();
-        startGame();
+        startButton.addEventListener("click", startGame);
+
+        // Початковий рендер екрану
+        initGame();
     </script>
 </body>
 </html>
