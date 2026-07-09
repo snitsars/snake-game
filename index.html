@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Моя Змійка: Про</title>
+    <title>Моя Змійка: Бонусний Шанс</title>
     <style>
         body {
             margin: 0;
@@ -138,32 +138,37 @@
         const pauseButton = document.getElementById("pause-button");
 
         const gridSize = 16; 
-        const tileCount = canvas.width / gridSize; // 25x25 клітинок
+        const tileCount = canvas.width / gridSize; 
 
         let snake = [];
         let regularApple = { x: 0, y: 0, emoji: '🍎', value: 1 };
-        let customItem = null; // Буде містити або супер-бустер, або декрезор
+        let customItem = null; 
         
         let dx = 1; 
         let dy = 0;
         let score = 0;
         let gameInterval = null;
+        let customItemTimer = null; // Таймер зникнення кастомного об'єкта
         let isPlaying = false;
         let isPaused = false;
         let segmentsToAdd = 0;
+        let animationFrame = 0;
 
-        const boosters = [
-            { emoji: '🍌', min: 2, max: 10 }, { emoji: '🍇', min: 2, max: 10 },
-            { emoji: '🍓', min: 2, max: 10 }, { emoji: '🍉', min: 2, max: 10 },
-            { emoji: ' Pineapple 🍍', min: 2, max: 10 }, { emoji: '🍒', min: 2, max: 10 },
-            { emoji: '🥝', min: 2, max: 10 }, { emoji: '🍑', min: 2, max: 10 },
-            { emoji: '🍊', min: 2, max: 10 }, { emoji: '🍈', min: 2, max: 10 }
-        ];
-
-        const decreasors = [
-            { emoji: '🍔', min: 1, max: 10 },
-            { emoji: '🍟', min: 1, max: 10 },
-            { emoji: '🍕', min: 1, max: 10 }
+        // Набір кастомних бонусів із вагою (рідкістю)
+        const pool = [
+            { emoji: '🍌', type: 'booster', value: 2, weight: 20 },
+            { emoji: '🍊', type: 'booster', value: 3, weight: 18 },
+            { emoji: '🍇', type: 'booster', value: 4, weight: 15 },
+            { emoji: '🍒', type: 'booster', value: 5, weight: 12 },
+            { emoji: '🍑', type: 'booster', value: 6, weight: 10 },
+            { emoji: '🥝', type: 'booster', value: 7, weight: 8 },
+            { emoji: '🍓', type: 'booster', value: 8, weight: 6 },
+            { emoji: '🍈', type: 'booster', value: 9, weight: 4 },
+            { emoji: '🍉', type: 'booster', value: 10, weight: 2 }, 
+            { emoji: '🍍', type: 'booster', value: 10, weight: 2 }, 
+            { emoji: '🍟', type: 'decreasor', value: 2, weight: 15 },
+            { emoji: '🍕', type: 'decreasor', value: 5, weight: 8 },
+            { emoji: '🍔', type: 'decreasor', value: 10, weight: 3 }  
         ];
 
         function initGame() {
@@ -173,20 +178,19 @@
             score = 0;
             segmentsToAdd = 0;
             isPaused = false;
+            animationFrame = 0;
+            clearCustomItem();
+            
             scoreElement.innerText = score;
             pauseButton.innerText = "ПАУЗА ⏸️";
-            spawnItemsPairs();
+            
+            startNewRound();
             draw();
         }
 
         function startGame() {
             if (isPlaying && !isPaused) return;
-            
-            if (isPaused) {
-                togglePause();
-                return;
-            }
-
+            if (isPaused) { togglePause(); return; }
             initGame();
             isPlaying = true;
             startScreen.style.display = "none";
@@ -199,7 +203,6 @@
                 isPaused = true;
                 clearInterval(gameInterval);
                 pauseButton.innerText = "ПРОДОВЖИТИ ▶️";
-                // Візуальна позначка паузи
                 ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.font = "30px Arial";
@@ -216,61 +219,78 @@
         function gameOver() {
             isPlaying = false;
             clearInterval(gameInterval);
+            clearCustomItem();
             startButton.innerText = "ГРАТИ ЗНОВУ";
             startScreen.style.display = "flex";
         }
 
         function getRandPos() {
-            return {
-                x: Math.floor(Math.random() * tileCount),
-                y: Math.floor(Math.random() * tileCount)
-            };
+            return { x: Math.floor(Math.random() * tileCount), y: Math.floor(Math.random() * tileCount) };
         }
 
         function isOccupied(pos) {
-            if (snake.some(s => s.x === pos.x && s.y === pos.y)) return true;
-            return false;
+            return snake.some(s => s.x === pos.x && s.y === pos.y);
         }
 
-        function spawnItemsPairs() {
-            // 1. Спавн стандартного яблука
+        function clearCustomItem() {
+            customItem = null;
+            if (customItemTimer) {
+                clearTimeout(customItemTimer);
+                customItemTimer = null;
+            }
+        }
+
+        function getRandomItemFromPool() {
+            const totalWeight = pool.reduce((sum, item) => sum + item.weight, 0);
+            let randomNum = Math.random() * totalWeight;
+            for (let i = 0; i < pool.length; i++) {
+                if (randomNum < pool[i].weight) return { ...pool[i] };
+                randomNum -= pool[i].weight;
+            }
+            return { ...pool[0] };
+        }
+
+        // ЛОГІКА ХВИЛІ: Поява яблука + розрахунок шансу на бонус
+        function startNewRound() {
+            clearCustomItem();
+
+            // 1. Спавнимо обов'язкове яблуко
             let applePos = getRandPos();
             while (isOccupied(applePos)) { applePos = getRandPos(); }
             regularApple.x = applePos.x;
             regularApple.y = applePos.y;
 
-            // 2. Спавн кастомного об'єкта (бустер або декрезор)
-            const isBooster = Math.random() > 0.35; // 65% бустер, 35% декрезор
-            let target = {};
-
-            if (isBooster) {
-                const b = boosters[Math.floor(Math.random() * boosters.length)];
-                const val = Math.floor(Math.random() * (b.max - b.min + 1)) + b.min;
-                target = { type: 'booster', emoji: b.emoji, value: val };
-            } else {
-                const d = decreasors[Math.floor(Math.random() * decreasors.length)];
-                const val = Math.floor(Math.random() * (d.max - d.min + 1)) + d.min;
-                target = { type: 'decreasor', emoji: d.emoji, value: val };
-            }
-
-            let customPos = getRandPos();
-            // Перевірка, щоб не перетнулося зі змійкою та першим яблуком
-            while (isOccupied(customPos) || (customPos.x === regularApple.x && customPos.y === regularApple.y)) {
-                customPos = getRandPos();
-            }
+            // 2. Рахуємо шанс появи бонусу (наприклад, 30% що бонус взагалі з'явиться в цьому раунді)
+            const spawnChance = Math.random() < 0.30; 
             
-            target.x = customPos.x;
-            target.y = customPos.y;
-            customItem = target;
+            if (spawnChance) {
+                let target = getRandomItemFromPool();
+                let customPos = getRandPos();
+                
+                while (isOccupied(customPos) || (customPos.x === regularApple.x && customPos.y === regularApple.y)) {
+                    customPos = getRandPos();
+                }
+                
+                target.x = customPos.x;
+                target.y = customPos.y;
+                customItem = target;
+
+                // ОБМЕЖЕННЯ ЧАСУ: Бонус зникне сам через 5 секунд (5000 мс), якщо його не з'їсти
+                customItemTimer = setTimeout(() => {
+                    if (isPlaying && !isPaused && customItem) {
+                        customItem = null; // Бонус просто випарувався, гра триває
+                    }
+                }, 5000);
+            }
         }
 
         function update() {
             if (isPaused) return;
+            animationFrame++;
 
             let nextX = snake[0].x + dx;
             let nextY = snake[0].y + dy;
 
-            // Проходження крізь стіни
             if (nextX < 0) nextX = tileCount - 1;
             if (nextX >= tileCount) nextX = 0;
             if (nextY < 0) nextY = tileCount - 1;
@@ -284,16 +304,16 @@
             }
 
             snake.unshift(head);
-            let ate = false;
+            let roundFinished = false;
 
             // Перевірка 1: З'їли звичайне яблуко
             if (head.x === regularApple.x && head.y === regularApple.y) {
                 score += regularApple.value;
-                ate = true;
+                roundFinished = true;
             } 
-            // Перевірка 2: З'їли кастомний бонус/фастфуд
-            else if (head.x === customItem.x && head.y === customItem.y) {
-                ate = true;
+            // Перевірка 2: З'їли бонус/фастфуд (поки він активний)
+            else if (customItem && head.x === customItem.x && head.y === customItem.y) {
+                roundFinished = true;
                 if (customItem.type === 'booster') {
                     score += customItem.value;
                     segmentsToAdd += (customItem.value - 1);
@@ -305,9 +325,9 @@
                 }
             }
 
-            if (ate) {
+            if (roundFinished) {
                 scoreElement.innerText = score;
-                spawnItemsPairs(); // Інший об'єкт автоматично зникає, бо ми генеруємо нову пару
+                startNewRound(); // Скидаємо все старе та починаємо новий раунд
             } else {
                 if (segmentsToAdd > 0) {
                     segmentsToAdd--;
@@ -331,19 +351,69 @@
 
             // Малюємо змійку
             snake.forEach((segment, index) => {
-                ctx.fillStyle = (index === 0) ? "#388E3C" : "#4CAF50";
-                ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 1, gridSize - 1);
+                let x = segment.x * gridSize;
+                let y = segment.y * gridSize;
+                let size = gridSize;
+
+                ctx.save();
+                if (index === 0) {
+                    let pulse = Math.sin(animationFrame * 0.5) * 0.8;
+                    ctx.fillStyle = "#388E3C";
+                    ctx.beginPath();
+                    ctx.arc(x + gridSize/2, y + gridSize/2, (gridSize/2) + pulse, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = "white";
+                    let eyeSize = 3; let eyeOffset = 4;
+                    let eye1 = {x: 0, y: 0}, eye2 = {x: 0, y: 0};
+                    
+                    if (dx !== 0) {
+                        eye1 = { x: x + gridSize/2 + dx*4, y: y + gridSize/2 - eyeOffset };
+                        eye2 = { x: x + gridSize/2 + dx*4, y: y + gridSize/2 + eyeOffset };
+                    } else {
+                        eye1 = { x: x + gridSize/2 - eyeOffset, y: y + gridSize/2 + dy*4 };
+                        eye2 = { x: x + gridSize/2 + eyeOffset, y: y + gridSize/2 + dy*4 };
+                    }
+                    ctx.beginPath();
+                    ctx.arc(eye1.x, eye1.y, eyeSize, 0, Math.PI*2);
+                    ctx.arc(eye2.x, eye2.y, eyeSize, 0, Math.PI*2);
+                    ctx.fill();
+
+                    ctx.fillStyle = "black";
+                    ctx.beginPath();
+                    ctx.arc(eye1.x + dx, eye1.y + dy, eyeSize/2, 0, Math.PI*2);
+                    ctx.arc(eye2.x + dx, eye2.y + dy, eyeSize/2, 0, Math.PI*2);
+                    ctx.fill();
+                } else {
+                    ctx.fillStyle = "#4CAF50";
+                    let radius = 6;
+                    if (index === snake.length - 1) {
+                        size = gridSize * 0.7;
+                        x += (gridSize - size) / 2; y += (gridSize - size) / 2;
+                        radius = 4;
+                    }
+                    ctx.beginPath();
+                    ctx.moveTo(x + radius, y); ctx.lineTo(x + size - radius, y);
+                    ctx.quadraticCurveTo(x + size, y, x + size, y + radius);
+                    ctx.lineTo(x + size, y + size - radius);
+                    ctx.quadraticCurveTo(x + size, y + size, x + size - radius, y + size);
+                    ctx.lineTo(x + radius, y + size - radius);
+                    ctx.quadraticCurveTo(x, y + size, x, y + size - radius);
+                    ctx.lineTo(x, y + radius); ctx.quadraticCurveTo(x, y, x + radius, y);
+                    ctx.closePath(); ctx.fill();
+                }
+                ctx.restore();
             });
 
-            // Налаштування тексту для Емодзі
+            // Рендер їжі
             ctx.font = `${gridSize}px Arial`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
 
-            // Рендер звичайного яблука
+            // Яблуко малюється на початку кожної хвилі
             ctx.fillText(regularApple.emoji, regularApple.x * gridSize + gridSize/2, regularApple.y * gridSize + gridSize/2);
-
-            // Рендер кастомного предмета
+            
+            // Якщо випав бонус і час не закінчився, малюємо його
             if (customItem) {
                 ctx.fillText(customItem.emoji, customItem.x * gridSize + gridSize/2, customItem.y * gridSize + gridSize/2);
             }
@@ -355,7 +425,6 @@
             if (newDy !== 0 && dy === 0) { dx = 0; dy = newDy; }
         }
 
-        // Слухачі подій кнопок
         document.getElementById("btn-up").addEventListener("click", () => changeDirection(0, -1));
         document.getElementById("btn-down").addEventListener("click", () => changeDirection(0, 1));
         document.getElementById("btn-left").addEventListener("click", () => changeDirection(-1, 0));
@@ -364,7 +433,6 @@
         pauseButton.addEventListener("click", togglePause);
         startButton.addEventListener("click", startGame);
 
-        // Кнопочне керування з клавіатури ПК
         document.addEventListener("keydown", (e) => {
             if (e.key === "ArrowUp" || e.key === "w") changeDirection(0, -1);
             if (e.key === "ArrowDown" || e.key === "s") changeDirection(0, 1);
