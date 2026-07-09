@@ -14,8 +14,8 @@
             flex-direction: column;
             align-items: center;
             height: 100vh;
-            /* Враховуємо безпечні зони чубчика/індикатора iPhone */
-            padding: calc(10px + env(safe-area-inset-top)) 10px calc(10px + env(safe-area-inset-bottom)) 10px;
+            /* Враховуємо безпечні зони iPhone */
+            padding: calc(10px + env(safe-area-inset-top)) 15px calc(10px + env(safe-area-inset-bottom)) 15px;
             box-sizing: border-box;
             overflow: hidden;
             touch-action: manipulation;
@@ -56,13 +56,13 @@
             background-color: #555;
         }
 
-        /* Контейнер тепер забирає ВЕСЬ вільний простір по висоті */
+        /* Контейнер динамічно займає простір, що залишився */
         .canvas-container {
             position: relative;
             width: 100%;
             max-width: 600px;
             flex-grow: 1; 
-            min-height: 0; /* Важливо для flexbox */
+            min-height: 0; 
         }
 
         canvas {
@@ -99,9 +99,10 @@
             cursor: pointer;
         }
 
-        /* Ергономічний джойстик для мобільних */
+        /* Піднятий і безпечний мобільний джойстик */
         .controls {
-            margin-top: 10px;
+            margin-top: 15px;
+            margin-bottom: 25px; /* Захисна зона від нижнього краю екрана/домашньої смуги iPhone */
             display: grid;
             grid-template-columns: repeat(3, 70px);
             grid-template-rows: repeat(2, 70px);
@@ -132,7 +133,7 @@
         #btn-down { grid-column: 2; grid-row: 2; }
         #btn-right { grid-column: 3; grid-row: 2; }
 
-        /* Ховаємо джойстик на ПК, де є клавіатура, щоб дати грі ще більше місця */
+        /* На ПК приховуємо кнопки */
         @media (min-width: 768px) {
             .controls {
                 display: none;
@@ -176,9 +177,9 @@
         const pauseButton = document.getElementById("pause-button");
         const restartButtonTop = document.getElementById("restart-button-top");
 
-        const gridSize = 18; // Розмір однієї клітинки в пікселях всередині логіки
-        let colsCount = 0;   // Кількість колонок (розраховується динамічно)
-        let rowsCount = 0;   // Кількість рядків (розраховується динамічно)
+        const gridSize = 18; 
+        let colsCount = 0;   
+        let rowsCount = 0;   
 
         let snake = [];
         let regularApple = { x: 0, y: 0, emoji: '🍎', value: 1 };
@@ -210,14 +211,11 @@
             { emoji: '🍔', type: 'decreasor', value: 10, weight: 3 }  
         ];
 
-        // Динамічний перерахунок матриці поля під розмір екрану
         function resizeCanvas() {
             const rect = canvas.getBoundingClientRect();
-            // Встановлюємо реальну внутрішню роздільну здатність канвасу відповідно до його CSS розмірів
             canvas.width = Math.floor(rect.width);
             canvas.height = Math.floor(rect.height);
 
-            // Вираховуємо скільки цілих клітинок вміщує нове поле
             colsCount = Math.floor(canvas.width / gridSize);
             rowsCount = Math.floor(canvas.height / gridSize);
 
@@ -227,9 +225,8 @@
         window.addEventListener('resize', resizeCanvas);
 
         function initGame() {
-            resizeCanvas(); // Оновлюємо розміри перед стартом
+            resizeCanvas(); 
             
-            // Центруємо початкову змійку незалежно від форми поля
             const startY = Math.floor(rowsCount / 2);
             snake = [{x: 5, y: startY}, {x: 4, y: startY}, {x: 3, y: startY}];
             
@@ -358,7 +355,6 @@
             let nextX = snake[0].x + dx;
             let nextY = snake[0].y + dy;
 
-            // Телепортація крізь краї з урахуванням нових динамічних меж
             if (nextX < 0) nextX = colsCount - 1;
             if (nextX >= colsCount) nextX = 0;
             if (nextY < 0) nextY = rowsCount - 1;
@@ -410,15 +406,12 @@
         }
 
         function draw() {
-            // Очищення фону
             ctx.fillStyle = "#111";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Центрування сітки у випадку залишків пікселів по краях канвасу
             const offsetX = (canvas.width - (colsCount * gridSize)) / 2;
             const offsetY = (canvas.height - (rowsCount * gridSize)) / 2;
 
-            // Малюємо змійку
             snake.forEach((segment, index) => {
                 let x = offsetX + segment.x * gridSize;
                 let y = offsetY + segment.y * gridSize;
@@ -474,7 +467,6 @@
                 ctx.restore();
             });
 
-            // Рендер об'єктів їжі
             ctx.font = `${gridSize}px Arial`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
@@ -510,7 +502,6 @@
             if (e.key === "r" || e.key === "R") forceRestart();
         });
 
-        // Первинний розрахунок при завантаженні сторінки
         resizeCanvas();
         initGame();
     </script>
