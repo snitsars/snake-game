@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Моя Змійка</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #1a1a1a;
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+        #score-board {
+            font-size: 24px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        canvas {
+            background-color: #111;
+            border: 4px solid #333;
+            border-radius: 8px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
+        /* Блок кнопок керування для iPhone */
+        .controls {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(3, 80px);
+            grid-template-rows: repeat(2, 80px);
+            gap: 10px;
+            justify-content: center;
+        }
+        .btn {
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 28px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            active-background: #555;
+        }
+        .btn:active {
+            background-color: #555;
+        }
+        #btn-up { grid-column: 2; grid-row: 1; }
+        #btn-left { grid-column: 1; grid-row: 2; }
+        #btn-down { grid-column: 2; grid-row: 2; }
+        #btn-right { grid-column: 3; grid-row: 2; }
+    </style>
+</head>
+<body>
+
+    <div id="score-board">Рахунок: <span id="score">0</span></div>
+    <canvas id="gameCanvas" width="320" height="320"></canvas>
+
+    <div class="controls">
+        <button class="btn" id="btn-up">↑</button>
+        <button class="btn" id="btn-left">←</button>
+        <button class="btn" id="btn-down">↓</button>
+        <button class="btn" id="btn-right">→</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreElement = document.getElementById("score");
+
+        const gridSize = 16; 
+        const tileCount = canvas.width / gridSize; // 20x20 клітинок
+
+        let snake = [{x: 10, y: 10}];
+        let food = {x: 5, y: 5};
+        let dx = 1; // рух вправо по дефолту
+        let dy = 0;
+        let score = 0;
+        let gameInterval;
+
+        function startGame() {
+            gameInterval = setInterval(update, 150); // Швидкість гри (150 мс)
+        }
+
+        function update() {
+            // Рух голови
+            const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+
+            // Перевірка зіткнення зі стінами або хвостом
+            if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount || collision(head)) {
+                alert("Гра закінчена! Ваш рахунок: " + score);
+                resetGame();
+                return;
+            }
+
+            snake.unshift(head); // додаємо нову голову
+
+            // Перевірка чи з'їла яблуко
+            if (head.x === food.x && head.y === food.y) {
+                score++;
+                scoreElement.innerText = score;
+                generateFood();
+            } else {
+                snake.pop(); // видаляємо хвіст, якщо не їла
+            }
+
+            draw();
+        }
+
+        function collision(head) {
+            return snake.some((segment, index) => index !== 0 && segment.x === head.x && segment.y === head.y);
+        }
+
+        function generateFood() {
+            food.x = Math.floor(Math.random() * tileCount);
+            food.y = Math.floor(Math.random() * tileCount);
+            // Перевірка, щоб їжа не спавнилась на змійці
+            if (snake.some(s => s.x === food.x && s.y === food.y)) {
+                generateFood();
+            }
+        }
+
+        function draw() {
+            // Очищення екрана
+            ctx.fillStyle = "#111";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Малюємо змійку
+            ctx.fillStyle = "#4CAF50"; // зелена змійка
+            snake.forEach((segment, index) => {
+                // Голова трохи темніша
+                if(index === 0) ctx.fillStyle = "#388E3C";
+                else ctx.fillStyle = "#4CAF50";
+                ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 2, gridSize - 2);
+            });
+
+            // Малюємо їжу
+            ctx.fillStyle = "#FF5722"; // червоне яблуко
+            ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 2, gridSize - 2);
+        }
+
+        function resetGame() {
+            snake = [{x: 10, y: 10}];
+            dx = 1;
+            dy = 0;
+            score = 0;
+            scoreElement.innerText = score;
+            generateFood();
+        }
+
+        // Керування кнопками на екрані (для iPhone)
+        document.getElementById("btn-up").addEventListener("click", () => { if (dy === 0) { dx = 0; dy = -1; } });
+        document.getElementById("btn-down").addEventListener("click", () => { if (dy === 0) { dx = 0; dy = 1; } });
+        document.getElementById("btn-left").addEventListener("click", () => { if (dx === 0) { dx = -1; dy = 0; } });
+        document.getElementById("btn-right").addEventListener("click", () => { if (dx === 0) { dx = 1; dy = 0; } });
+
+        // Керування клавіатурою (якщо запустите на ПК)
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowUp" && dy === 0) { dx = 0; dy = -1; }
+            if (e.key === "ArrowDown" && dy === 0) { dx = 0; dy = 1; }
+            if (e.key === "ArrowLeft" && dx === 0) { dx = -1; dy = 0; }
+            if (e.key === "ArrowRight" && dx === 0) { dx = 1; dy = 0; }
+        });
+
+        generateFood();
+        startGame();
+    </script>
+</body>
+</html>
