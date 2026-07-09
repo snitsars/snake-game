@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Змійка: iPhone Edition</title>
+    <title>Змійка: Максимальний Простір</title>
     <style>
         body {
             margin: 0;
@@ -13,30 +13,34 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            min-height: 100vh;
+            height: 100vh;
+            /* Враховуємо безпечні зони чубчика/індикатора iPhone */
+            padding: calc(10px + env(safe-area-inset-top)) 10px calc(10px + env(safe-area-inset-bottom)) 10px;
+            box-sizing: border-box;
             overflow: hidden;
             touch-action: manipulation;
-            padding: 10px;
-            box-sizing: border-box;
         }
-        /* Оптимізована верхня панель */
+
         .header-panel {
             width: 100%;
-            max-width: 400px;
+            max-width: 600px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
+            flex-shrink: 0;
+            margin-bottom: 10px;
         }
+
         #score-board {
             font-size: 22px;
             font-weight: bold;
         }
+
         .nav-buttons {
             display: flex;
             gap: 8px;
         }
+
         .header-btn {
             background-color: #333;
             color: white;
@@ -46,18 +50,21 @@
             font-weight: bold;
             border-radius: 12px;
             cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
+
         .header-btn:active {
             background-color: #555;
         }
-        /* Адаптивний контейнер для екрана iPhone */
+
+        /* Контейнер тепер забирає ВЕСЬ вільний простір по висоті */
         .canvas-container {
             position: relative;
-            width: 95vw;
-            max-width: 400px;
-            aspect-ratio: 1 / 1;
+            width: 100%;
+            max-width: 600px;
+            flex-grow: 1; 
+            min-height: 0; /* Важливо для flexbox */
         }
+
         canvas {
             width: 100%;
             height: 100%;
@@ -68,6 +75,7 @@
             display: block;
             box-sizing: border-box;
         }
+
         #start-screen {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -79,6 +87,7 @@
             justify-content: center;
             z-index: 10;
         }
+
         .start-btn {
             background-color: #4CAF50;
             color: white;
@@ -88,36 +97,50 @@
             font-weight: bold;
             border-radius: 22px;
             cursor: pointer;
-            box-shadow: 0 4px 10px rgba(76, 175, 80, 0.4);
         }
-        /* Ергономічний джойстик */
+
+        /* Ергономічний джойстик для мобільних */
         .controls {
-            margin-top: 15px;
+            margin-top: 10px;
             display: grid;
-            grid-template-columns: repeat(3, 75px);
-            grid-template-rows: repeat(2, 75px);
+            grid-template-columns: repeat(3, 70px);
+            grid-template-rows: repeat(2, 70px);
             gap: 8px;
             justify-content: center;
+            flex-shrink: 0;
         }
+
         .btn {
             background-color: #2b2b2b;
             color: white;
             border: none;
             border-radius: 50%;
-            font-size: 26px;
+            font-size: 24px;
             font-weight: bold;
             display: flex;
             align-items: center;
             justify-content: center;
             box-shadow: 0 4px 8px rgba(0,0,0,0.4);
         }
+
         .btn:active {
             background-color: #444;
         }
+
         #btn-up { grid-column: 2; grid-row: 1; }
         #btn-left { grid-column: 1; grid-row: 2; }
         #btn-down { grid-column: 2; grid-row: 2; }
         #btn-right { grid-column: 3; grid-row: 2; }
+
+        /* Ховаємо джойстик на ПК, де є клавіатура, щоб дати грі ще більше місця */
+        @media (min-width: 768px) {
+            .controls {
+                display: none;
+            }
+            body {
+                padding: 20px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -131,7 +154,7 @@
     </div>
     
     <div class="canvas-container">
-        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <canvas id="gameCanvas"></canvas>
         <div id="start-screen">
             <button class="start-btn" id="start-button">СТАРТ</button>
         </div>
@@ -153,8 +176,9 @@
         const pauseButton = document.getElementById("pause-button");
         const restartButtonTop = document.getElementById("restart-button-top");
 
-        const gridSize = 16; 
-        const tileCount = canvas.width / gridSize; 
+        const gridSize = 18; // Розмір однієї клітинки в пікселях всередині логіки
+        let colsCount = 0;   // Кількість колонок (розраховується динамічно)
+        let rowsCount = 0;   // Кількість рядків (розраховується динамічно)
 
         let snake = [];
         let regularApple = { x: 0, y: 0, emoji: '🍎', value: 1 };
@@ -186,8 +210,29 @@
             { emoji: '🍔', type: 'decreasor', value: 10, weight: 3 }  
         ];
 
+        // Динамічний перерахунок матриці поля під розмір екрану
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            // Встановлюємо реальну внутрішню роздільну здатність канвасу відповідно до його CSS розмірів
+            canvas.width = Math.floor(rect.width);
+            canvas.height = Math.floor(rect.height);
+
+            // Вираховуємо скільки цілих клітинок вміщує нове поле
+            colsCount = Math.floor(canvas.width / gridSize);
+            rowsCount = Math.floor(canvas.height / gridSize);
+
+            if (isPlaying) draw();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
         function initGame() {
-            snake = [{x: 5, y: 12}, {x: 4, y: 12}, {x: 3, y: 12}];
+            resizeCanvas(); // Оновлюємо розміри перед стартом
+            
+            // Центруємо початкову змійку незалежно від форми поля
+            const startY = Math.floor(rowsCount / 2);
+            snake = [{x: 5, y: startY}, {x: 4, y: startY}, {x: 3, y: startY}];
+            
             dx = 1;
             dy = 0;
             score = 0;
@@ -248,7 +293,10 @@
         }
 
         function getRandPos() {
-            return { x: Math.floor(Math.random() * tileCount), y: Math.floor(Math.random() * tileCount) };
+            return { 
+                x: Math.floor(Math.random() * colsCount), 
+                y: Math.floor(Math.random() * rowsCount) 
+            };
         }
 
         function isOccupied(pos) {
@@ -310,10 +358,11 @@
             let nextX = snake[0].x + dx;
             let nextY = snake[0].y + dy;
 
-            if (nextX < 0) nextX = tileCount - 1;
-            if (nextX >= tileCount) nextX = 0;
-            if (nextY < 0) nextY = tileCount - 1;
-            if (nextY >= tileCount) nextY = 0;
+            // Телепортація крізь краї з урахуванням нових динамічних меж
+            if (nextX < 0) nextX = colsCount - 1;
+            if (nextX >= colsCount) nextX = 0;
+            if (nextY < 0) nextY = rowsCount - 1;
+            if (nextY >= rowsCount) nextY = 0;
 
             const head = { x: nextX, y: nextY };
 
@@ -361,14 +410,18 @@
         }
 
         function draw() {
-            if (isPaused) return;
-
+            // Очищення фону
             ctx.fillStyle = "#111";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+            // Центрування сітки у випадку залишків пікселів по краях канвасу
+            const offsetX = (canvas.width - (colsCount * gridSize)) / 2;
+            const offsetY = (canvas.height - (rowsCount * gridSize)) / 2;
+
+            // Малюємо змійку
             snake.forEach((segment, index) => {
-                let x = segment.x * gridSize;
-                let y = segment.y * gridSize;
+                let x = offsetX + segment.x * gridSize;
+                let y = offsetY + segment.y * gridSize;
                 let size = gridSize;
 
                 ctx.save();
@@ -421,14 +474,15 @@
                 ctx.restore();
             });
 
+            // Рендер об'єктів їжі
             ctx.font = `${gridSize}px Arial`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
 
-            ctx.fillText(regularApple.emoji, regularApple.x * gridSize + gridSize/2, regularApple.y * gridSize + gridSize/2);
+            ctx.fillText(regularApple.emoji, offsetX + regularApple.x * gridSize + gridSize/2, offsetY + regularApple.y * gridSize + gridSize/2);
             
             if (customItem) {
-                ctx.fillText(customItem.emoji, customItem.x * gridSize + gridSize/2, customItem.y * gridSize + gridSize/2);
+                ctx.fillText(customItem.emoji, offsetX + customItem.x * gridSize + gridSize/2, offsetY + customItem.y * gridSize + gridSize/2);
             }
         }
 
@@ -456,6 +510,8 @@
             if (e.key === "r" || e.key === "R") forceRestart();
         });
 
+        // Первинний розрахунок при завантаженні сторінки
+        resizeCanvas();
         initGame();
     </script>
 </body>
