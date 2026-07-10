@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Змійка: Класика vs Аркада Лабіринт</title>
+    <title>Змійка: Еволюція та Математичний Порятунок</title>
     <style>
         body {
             margin: 0;
@@ -62,7 +62,6 @@
             border-radius: 12px;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
-            transition: all 0.2s ease;
         }
 
         #mode-toggle-btn {
@@ -93,7 +92,25 @@
             box-sizing: border-box;
         }
 
-        #start-screen, #victory-screen {
+        /* Контейнер для міні-карти поверх основного поля */
+        #minimap-container {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 80px;
+            height: 120px;
+            background: rgba(0, 0, 0, 0.75);
+            border: 2px solid #555;
+            border-radius: 6px;
+            z-index: 5;
+            display: none;
+        }
+        #minimap {
+            width: 100%;
+            height: 100%;
+        }
+
+        #start-screen, #victory-screen, #math-screen {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.93);
@@ -108,41 +125,36 @@
             box-sizing: border-box;
         }
 
-        #victory-screen {
-            background: rgba(10, 25, 10, 0.95);
-            border: 3px solid #4CAF50;
-            display: none;
-        }
+        #victory-screen { background: rgba(10, 25, 10, 0.95); border: 3px solid #4CAF50; display: none; }
+        #math-screen { background: rgba(30, 20, 10, 0.96); border: 3px solid #FF9800; display: none; }
 
-        .start-btn, .victory-btn {
+        .start-btn, .victory-btn, .math-btn {
             background-color: #4CAF50;
             color: white;
             border: none;
-            padding: 16px 40px;
-            font-size: 22px;
+            padding: 14px 35px;
+            font-size: 20px;
             font-weight: bold;
             border-radius: 25px;
             cursor: pointer;
             margin-top: 15px;
             box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
-            -webkit-tap-highlight-color: transparent;
         }
 
-        .victory-btn {
-            background-color: #FFD700;
-            color: #000;
-            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
-        }
+        .math-btn { background-color: #FF9800; box-shadow: 0 4px 15px rgba(255, 152, 0, 0.4); }
+        .victory-btn { background-color: #FFD700; color: #000; }
 
-        .animated-emoji {
-            font-size: 50px;
-            margin: 10px 0;
-            animation: bounce 1.5s infinite alternate;
-        }
-
-        @keyframes bounce {
-            from { transform: scale(0.9); }
-            to { transform: scale(1.1); }
+        #math-input {
+            background: #222;
+            border: 2px solid #FF9800;
+            color: white;
+            font-size: 24px;
+            padding: 10px;
+            width: 120px;
+            text-align: center;
+            border-radius: 10px;
+            margin-top: 15px;
+            outline: none;
         }
 
         .controls {
@@ -166,14 +178,9 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 6px 12px rgba(0,0,0,0.5);
-            -webkit-tap-highlight-color: transparent;
         }
 
-        .btn:active {
-            background-color: #4CAF50;
-            border-color: #81C784;
-        }
+        .btn:active { background-color: #4CAF50; }
 
         #btn-up { grid-column: 2; grid-row: 1; }
         #btn-left { grid-column: 1; grid-row: 2; }
@@ -182,8 +189,7 @@
 
         @media (min-width: 768px) {
             .controls { display: none; }
-            .header-panel { margin-top: 15px; }
-            body { padding: 20px; touch-action: auto; }
+            body { padding: 20px; }
         }
     </style>
 </head>
@@ -204,22 +210,33 @@
     <div class="canvas-container">
         <canvas id="gameCanvas"></canvas>
         
-        <!-- Екран старту / програшу -->
+        <div id="minimap-container">
+            <canvas id="minimap"></canvas>
+        </div>
+        
         <div id="start-screen">
             <h2 id="menu-title">🕹️ АРКАДНИЙ РЕЖИМ</h2>
             <p id="menu-desc" style="color:#aaa; max-width:400px; font-size:14px; margin:0 0 15px 0;">
-                Світ збільшується вниз на кожному рівні! Змійка рухається <b>тільки тоді, коли ви натискаєте управління</b>. Остерігайтеся ліній стін та пасток.
+                Світ збільшується вниз! Змійка рухається <b>тільки від натискань</b>. Остерігайтеся пасток та стін.
             </p>
             <button class="start-btn" id="start-button">СТАРТ</button>
         </div>
 
-        <!-- Вікно святкування кожних 100 елементів -->
         <div id="victory-screen">
-            <div class="animated-emoji">🎆 🔥 🏆 🔥 🎆</div>
-            <h2>НЕЙМОВІРНО! НОВИЙ РЕКОРД!</h2>
-            <p style="font-size: 18px; margin: 10px 0;">Ваша змійка досягла довжини <b id="vic-len" style="color: #FFD700;">100</b> елементів!</p>
-            <p style="color: #aae2aa;">Час поточної сесії: <b id="vic-time">00:00</b></p>
-            <button class="victory-btn" id="victory-continue-btn">ПРОДОВЖИТИ 🐍</button>
+            <h2>🎆 🔥 🏆 🔥 🎆</h2>
+            <h2>НЕЙМОВІРНО! РЕКОРД!</h2>
+            <p>Ваша змійка досягла довжини <b id="vic-len" style="color: #FFD700;">100</b> елементів!</p>
+            <p>Час сесії: <b id="vic-time">00:00</b></p>
+            <button class="victory-btn" id="victory-continue-btn">ПРОДОВЖИТИ</button>
+        </div>
+
+        <div id="math-screen">
+            <h2>🤔 ДРУГИЙ ШАНС!</h2>
+            <p style="color: #ffb74d;">Розв'яжіть приклад, щоб продовжити гру без втрати прогресу:</p>
+            <h1 id="math-question" style="font-size: 36px; letter-spacing: 2px; margin: 15px 0;">25 + 14 = ?</h1>
+            <input type="number" id="math-input" placeholder="?">
+            <br>
+            <button class="math-btn" id="math-submit-btn">ВІДПОВІСТИ</button>
         </div>
     </div>
 
@@ -233,6 +250,10 @@
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
+        const miniCanvas = document.getElementById("minimap");
+        const miniCtx = miniCanvas.getContext("2d");
+        const minimapContainer = document.getElementById("minimap-container");
+
         const scoreElement = document.getElementById("score");
         const levelElement = document.getElementById("level-val");
         const lengthElement = document.getElementById("len-val");
@@ -244,13 +265,17 @@
         const modeToggleBtn = document.getElementById("mode-toggle-btn");
         const menuTitle = document.getElementById("menu-title");
         const menuDesc = document.getElementById("menu-desc");
-        const touchControlsPanel = document.getElementById("touch-controls-panel");
 
-        // Елементи екрану тріумфу
         const victoryScreen = document.getElementById("victory-screen");
         const victoryContinueBtn = document.getElementById("victory-continue-btn");
         const vicLenLabel = document.getElementById("vic-len");
         const vicTimeLabel = document.getElementById("vic-time");
+
+        // Математичний екран
+        const mathScreen = document.getElementById("math-screen");
+        const mathQuestion = document.getElementById("math-question");
+        const mathInput = document.getElementById("math-input");
+        const mathSubmitBtn = document.getElementById("math-submit-btn");
 
         const gridSize = 24; 
         let viewCols = 0;   
@@ -271,17 +296,14 @@
         let isPlaying = false;
         let cameraY = 0; 
 
-        // Таймінги сесії та вехи нагород
         let sessionStartTime = null;
-        let nextMilestone = 100; // Наступна ціль для виклику салюту
+        let nextMilestone = 100; 
+        let mathCorrectAnswer = 0;
 
         const premiumPool = [
-            { emoji: '🍇', value: 2 },
-            { emoji: '🍌', value: 3 },
-            { emoji: '🍒', value: 4 },
-            { emoji: '🍓', value: 5 },
-            { emoji: '🍍', value: 6 }, 
-            { emoji: '🍉', value: 8 },
+            { emoji: '🍇', value: 2 }, { emoji: '🍌', value: 3 },
+            { emoji: '🍒', value: 4 }, { emoji: '🍓', value: 5 },
+            { emoji: '🍍', value: 6 }, { emoji: '🍉', value: 8 },
             { emoji: '💎', value: 10 }
         ];
 
@@ -289,7 +311,6 @@
 
         modeToggleBtn.addEventListener("click", () => {
             if (isPlaying) return; 
-            
             isArcadeMode = !isArcadeMode;
             if (isArcadeMode) {
                 modeToggleBtn.innerText = "РЕЖИМ: АРКАДА";
@@ -297,14 +318,16 @@
                 modeText.innerText = "АРКАДА 🕹️";
                 modeText.style.color = "#ff4336";
                 menuTitle.innerText = "🕹️ АРКАДНИЙ РЕЖИМ";
-                menuDesc.innerHTML = "Світ збільшується вниз на кожному рівні! Змійка рухається <b>тільки тоді, коли ви натискаєте управління</b>. З'явилися суцільні стіни-лінії.";
+                menuDesc.innerHTML = "Світ збільшується вниз! Змійка рухається <b>тільки від натискань</b>. Наявна міні-карта та математичний порятунок.";
+                minimapContainer.style.display = "block";
             } else {
                 modeToggleBtn.innerText = "РЕЖИМ: КЛАСИКА";
                 modeToggleBtn.classList.add("classic");
                 modeText.innerText = "КЛАСИКА 🍏";
                 modeText.style.color = "#2196F3";
                 menuTitle.innerText = "🍏 КЛАСИЧНИЙ РЕЖИМ";
-                menuDesc.innerHTML = "Стандартна змійка на замкнутому полі. Вона <b>рухається автоматично</b>. При виході за межі екрану — <b>з'являється з протилежного боку</b>!";
+                menuDesc.innerHTML = "Поле фіксоване. Змійка <b>рухається сама</b>. При виході за екран — з'являється з протилежного боку.";
+                minimapContainer.style.display = "none";
             }
             initGame();
         });
@@ -325,37 +348,50 @@
             worldWidth = viewCols;
             if (isArcadeMode) {
                 worldHeight = viewRows + (currentLevel - 1) * 8; 
+                minimapContainer.style.display = "block";
             } else {
                 worldHeight = viewRows; 
+                minimapContainer.style.display = "none";
             }
             buildWorldMap();
         }
 
+        // Безпечна процедурна генерація - стіни не перетинають тіло змійки
         function buildWorldMap() {
+            // Зберігаємо старі блоки, якщо вони вже були згенеровані (щоб не міняти поле під змійкою при розширенні)
+            let oldMap = worldMap;
             worldMap = Array(worldHeight).fill(null).map(() => Array(worldWidth).fill(TERRAIN.EMPTY));
-            if (!isArcadeMode) return; 
+            
+            for (let y = 0; y < worldHeight; y++) {
+                for (let x = 0; x < worldWidth; x++) {
+                    if (oldMap && oldMap[y] && oldMap[y][x] !== undefined) {
+                        worldMap[y][x] = oldMap[y][x];
+                        continue;
+                    }
 
-            for (let y = 6; y < worldHeight - 2; y += 4) {
-                if (Math.random() < 0.7) {
-                    let lineLength = Math.floor(Math.random() * (worldWidth / 2)) + 3; 
-                    let startX = Math.floor(Math.random() * (worldWidth - lineLength));
-                    
-                    for (let i = 0; i < lineLength; i++) {
-                        if (startX + i < worldWidth) {
-                            worldMap[y][startX + i] = TERRAIN.WALL;
+                    if (!isArcadeMode || y < 6) continue;
+
+                    // Перевірка: чи не знаходиться в цій точці змійка прямо зараз
+                    let isCollidingWithSnake = snake.some(seg => seg.x === x && seg.y === y);
+                    if (isCollidingWithSnake) continue;
+
+                    // Генерація ліній стін
+                    if (y % 4 === 0 && x === 0 && Math.random() < 0.6) {
+                        let lineLength = Math.floor(Math.random() * (worldWidth / 2)) + 3;
+                        for (let i = 0; i < lineLength; i++) {
+                            if (x + i < worldWidth && !snake.some(seg => seg.x === (x + i) && seg.y === y)) {
+                                worldMap[y][x + i] = TERRAIN.WALL;
+                            }
                         }
                     }
-                }
-            }
 
-            for(let y = 6; y < worldHeight; y++) {
-                for(let x = 0; x < worldWidth; x++) {
-                    if (worldMap[y][x] !== TERRAIN.EMPTY) continue; 
-
-                    let rand = Math.random();
-                    if (rand < 0.02) worldMap[y][x] = TERRAIN.WALL; 
-                    else if (rand < 0.07) worldMap[y][x] = TERRAIN.MUD; 
-                    else if (rand < 0.10) worldMap[y][x] = TERRAIN.FIRE; 
+                    // Поодинокі об'єкти
+                    if (worldMap[y][x] === TERRAIN.EMPTY) {
+                        let rand = Math.random();
+                        if (rand < 0.02) worldMap[y][x] = TERRAIN.WALL;
+                        else if (rand < 0.06) worldMap[y][x] = TERRAIN.MUD;
+                        else if (rand < 0.08) worldMap[y][x] = TERRAIN.FIRE;
+                    }
                 }
             }
         }
@@ -370,10 +406,8 @@
             cameraY = 0;
             nextMilestone = 100; 
             currentDirection = { x: 1, y: 0 };
-            sessionStartTime = Date.now(); // Засікаємо старт сесії
+            sessionStartTime = Date.now();
             
-            calculateWorldDimensions();
-
             const startY = 3;
             snake = [
                 {x: 4, y: startY},
@@ -381,6 +415,7 @@
                 {x: 2, y: startY}
             ];
 
+            calculateWorldDimensions();
             updateLevelMetrics();
             spawnResources();
             draw();
@@ -425,7 +460,9 @@
             
             if (isArcadeMode && calculatedLevel > currentLevel) {
                 currentLevel = calculatedLevel;
-                calculateWorldDimensions();
+                // ТУТ ВИПРАВЛЕНО: Змійка залишається на місці, поле розширюється вниз
+                worldHeight = viewRows + (currentLevel - 1) * 8; 
+                buildWorldMap(); 
                 spawnResources();
             } else if (!isArcadeMode) {
                 currentLevel = 1; 
@@ -435,31 +472,69 @@
             levelElement.innerText = isArcadeMode ? currentLevel : 1;
             lengthElement.innerText = snake.length;
 
-            // Перевірка досягнення вехи у 100 елементів (і кожні наступні 100 елементів)
             if (snake.length >= nextMilestone) {
                 triggerMilestoneCelebration(nextMilestone);
-                nextMilestone += 100; // Задаємо наступну планку
+                nextMilestone += 100; 
             }
         }
 
         function triggerMilestoneCelebration(reachedLength) {
-            // Зупиняємо хід гри
             isPlaying = false;
             if (classicIntervalId) clearInterval(classicIntervalId);
-
-            // Оновлюємо дані у вікні нагороди
             vicLenLabel.innerText = reachedLength;
             vicTimeLabel.innerText = getFormattedSessionTime();
-
-            // Показуємо модальне вікно привітання
             victoryScreen.style.display = "flex";
         }
 
-        // Кнопка продовження після тріумфу
         victoryContinueBtn.addEventListener("click", () => {
             victoryScreen.style.display = "none";
             isPlaying = true;
-            if (!isArcadeMode) startClassicLoop(); // Повертаємо авто-рух для класики
+            if (!isArcadeMode) startClassicLoop();
+        });
+
+        // Ініціація математичного порятунку
+        function triggerMathRescue() {
+            isPlaying = false;
+            if (classicIntervalId) clearInterval(classicIntervalId);
+
+            let isPlus = Math.random() > 0.5;
+            let num1 = Math.floor(Math.random() * 80) + 10;
+            let num2 = Math.floor(Math.random() * 10);
+
+            if (isPlus) {
+                mathCorrectAnswer = num1 + num2;
+                mathQuestion.innerText = `${num1} + ${num2} = ?`;
+            } else {
+                // Пакет унеможливлення від'ємних чисел
+                if (num1 < num2) { let t = num1; num1 = num2; num2 = t; }
+                mathCorrectAnswer = num1 - num2;
+                mathQuestion.innerText = `${num1} - ${num2} = ?`;
+            }
+
+            mathInput.value = "";
+            mathScreen.style.display = "flex";
+            setTimeout(() => mathInput.focus(), 200);
+        }
+
+        mathSubmitBtn.addEventListener("click", () => {
+            let userAnswer = parseInt(mathInput.value);
+            if (userAnswer === mathCorrectAnswer) {
+                // Порятунок успішний! Відкатуємо голову назад безпечно
+                mathScreen.style.display = "none";
+                isPlaying = true;
+                
+                // Переміщуємо голову на безпечну клітину поруч
+                let head = snake[0];
+                let safePos = getRandomEmptyPos();
+                snake[0] = { x: safePos.x, y: safePos.y };
+                
+                centerCamera();
+                draw();
+                if (!isArcadeMode) startClassicLoop();
+            } else {
+                mathScreen.style.display = "none";
+                executeActualGameOver("Неправильна відповідь! Навчайтеся краще 😭");
+            }
         });
 
         function centerCamera() {
@@ -490,13 +565,16 @@
 
             let targetTile = worldMap[nextY][nextX];
             if (targetTile === TERRAIN.WALL) return;
+            
             if (targetTile === TERRAIN.FIRE) {
-                gameOver("Змійка згоріла у вогні! 🔥");
+                if (isArcadeMode) { triggerMathRescue(); } 
+                else { gameOver("Змійка згоріла у вогні! 🔥"); }
                 return;
             }
 
             if (snake.some((seg, idx) => idx !== 0 && seg.x === nextX && seg.y === nextY)) {
-                gameOver("Ви врізалися у власний хвіст! ☠️");
+                if (isArcadeMode) { triggerMathRescue(); } 
+                else { gameOver("Ви врізалися у власний хвіст! ☠️"); }
                 return;
             }
 
@@ -524,6 +602,34 @@
             classicIntervalId = setInterval(() => {
                 if (isPlaying) step(currentDirection.x, currentDirection.y);
             }, 200); 
+        }
+
+        function drawMinimap() {
+            if (!isArcadeMode) return;
+            miniCanvas.width = miniCanvas.parentElement.clientWidth;
+            miniCanvas.height = miniCanvas.parentElement.clientHeight;
+            
+            miniCtx.fillStyle = "rgba(10, 10, 10, 0.8)";
+            miniCtx.fillRect(0, 0, miniCanvas.width, miniCanvas.height);
+
+            let scaleX = miniCanvas.width / worldWidth;
+            let scaleY = miniCanvas.height / worldHeight;
+
+            // Візуалізація перешкод на мінікарті
+            for (let y = 0; y < worldHeight; y++) {
+                for (let x = 0; x < worldWidth; x++) {
+                    if (worldMap[y][x] === TERRAIN.WALL) {
+                        miniCtx.fillStyle = "#ff4444";
+                        miniCtx.fillRect(x * scaleX, y * scaleY, scaleX, scaleY);
+                    }
+                }
+            }
+
+            // Позиція голови змійки
+            if (snake.length > 0) {
+                miniCtx.fillStyle = "#00ff00";
+                miniCtx.fillRect(snake[0].x * scaleX, snake[0].y * scaleY, scaleX * 1.5, scaleY * 1.5);
+            }
         }
 
         function draw() {
@@ -583,12 +689,18 @@
                     }
                 }
             });
+
+            drawMinimap();
         }
 
         function gameOver(msg) {
+            executeActualGameOver(msg);
+        }
+
+        function executeActualGameOver(msg) {
             isPlaying = false;
             if (classicIntervalId) clearInterval(classicIntervalId);
-            startScreen.innerHTML = `<h2>КІНЕЦЬ ГРИ 💀</h2><p style="color:#ff6b6b;">${msg}</p><p>Рахунок: <b>${score}</b></p><p style="color:#aaa; font-size:13px;">Тривалість сесії: ${getFormattedSessionTime()}</p><button class="start-btn" id="start-button" onclick="forceRestart()">ГРАТИ ЗНОВУ</button>`;
+            startScreen.innerHTML = `<h2>КІНЕЦЬ ГРИ 💀</h2><p style="color:#ff6b6b;">${msg}</p><p>Рахунок: <b>${score}</b></p><p style="color:#aaa; font-size:13px;">Сесія: ${getFormattedSessionTime()}</p><button class="start-btn" id="start-button" onclick="forceRestart()">ГРАТИ ЗНОВУ</button>`;
             startScreen.style.display = "flex";
         }
 
@@ -597,6 +709,7 @@
             isPlaying = true;
             startScreen.style.display = "none";
             victoryScreen.style.display = "none";
+            mathScreen.style.display = "none";
             if (!isArcadeMode) startClassicLoop();
         }
 
@@ -611,7 +724,6 @@
 
         function handleInputDirection(dx, dy) {
             if (!isPlaying) return;
-            
             if (isArcadeMode) {
                 step(dx, dy);
             } else {
