@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Змійка: Класика vs Аркада</title>
+    <title>Змійка: Класика vs Аркада Лабіринт</title>
     <style>
         body {
             margin: 0;
@@ -65,13 +65,12 @@
             transition: all 0.2s ease;
         }
 
-        /* Стилізація активного перемикача режимів */
         #mode-toggle-btn {
-            background-color: #d32f2f; /* Червоний колір для Аркади */
+            background-color: #d32f2f;
             border-color: #f44336;
         }
         #mode-toggle-btn.classic {
-            background-color: #1976D2; /* Синій колір для Класики */
+            background-color: #1976D2;
             border-color: #2196F3;
         }
 
@@ -159,8 +158,6 @@
         #btn-right { grid-column: 3; grid-row: 2; }
 
         @media (min-width: 768px) {
-            /* Ховаємо екранні кнопки на ПК, якщо активний класичний автоматичний режим */
-            .controls.classic-hide { display: none; }
             .controls { display: none; }
             .header-panel { margin-top: 15px; }
             body { padding: 20px; touch-action: auto; }
@@ -186,7 +183,7 @@
         <div id="start-screen">
             <h2 id="menu-title">🕹️ АРКАДНИЙ РЕЖИМ</h2>
             <p id="menu-desc" style="color:#aaa; max-width:400px; font-size:14px; margin:0 0 15px 0;">
-                Світ збільшується вниз на кожному рівні! Змійка рухається <b>тільки тоді, коли ви натискаєте управління</b>. Остерігайтеся стін, болота та вогню.
+                Світ збільшується вниз на кожному рівні! Змійка рухається <b>тільки тоді, коли ви натискаєте управління</b>. Остерігайтеся ліній стін та пасток.
             </p>
             <button class="start-btn" id="start-button">СТАРТ</button>
         </div>
@@ -218,15 +215,14 @@
         let viewCols = 0;   
         let viewRows = 0;   
 
-        // Параметри карти
-        let isArcadeMode = true; // Дефолтний стан
+        let isArcadeMode = true; 
         let worldWidth = 0;
         let worldHeight = 0; 
         let worldMap = []; 
 
         let snake = [];
         let items = [];
-        let currentDirection = { x: 1, y: 0 }; // Для класичного авто-руху
+        let currentDirection = { x: 1, y: 0 }; 
         let classicIntervalId = null;
         
         let currentLevel = 1;
@@ -239,16 +235,15 @@
             { emoji: '🍌', value: 3 },
             { emoji: '🍒', value: 4 },
             { emoji: '🍓', value: 5 },
-            { emoji: ' Pineapple', value: 6 },
+            { emoji: '🍍', value: 6 }, // Виправлено: тепер тут правильний емодзі ананаса замість тексту
             { emoji: '🍉', value: 8 },
             { emoji: '💎', value: 10 }
         ];
 
         const TERRAIN = { EMPTY: 0, WALL: 1, MUD: 2, FIRE: 3 };
 
-        // Перемикач режимів гри
         modeToggleBtn.addEventListener("click", () => {
-            if (isPlaying) return; // Не можна міняти режим під час матчу
+            if (isPlaying) return; 
             
             isArcadeMode = !isArcadeMode;
             if (isArcadeMode) {
@@ -257,17 +252,14 @@
                 modeText.innerText = "АРКАДА 🕹️";
                 modeText.style.color = "#ff4336";
                 menuTitle.innerText = "🕹️ АРКАДНИЙ РЕЖИМ";
-                menuDesc.innerHTML = "Світ збільшується вниз на кожному рівні! Змійка рухається <b>тільки тоді, коли ви натискаєте управління</b>. Остерігайтеся пасток.";
-                touchControlsPanel.style.display = "grid";
+                menuDesc.innerHTML = "Світ збільшується вниз на кожному рівні! Змійка рухається <b>тільки тоді, коли ви натискаєте управління</b>. З'явилися суцільні стіни-лінії.";
             } else {
                 modeToggleBtn.innerText = "РЕЖИМ: КЛАСИКА";
                 modeToggleBtn.classList.add("classic");
                 modeText.innerText = "КЛАСИКА 🍏";
                 modeText.style.color = "#2196F3";
                 menuTitle.innerText = "🍏 КЛАСИЧНИЙ РЕЖИМ";
-                menuDesc.innerHTML = "Стандартна змійка на замкнутому фіксованому полі. Вона <b>рухається автоматично за таймером</b>. Жодних перешкод, тільки збір їжі!";
-                // Показуємо стрілки на девайсах, ховаємо на ПК автоматично через СSS
-                touchControlsPanel.style.display = "grid"; 
+                menuDesc.innerHTML = "Стандартна змійка на замкнутому полі. Вона <b>рухається автоматично</b>. При виході за межі екрану — <b>з'являється з протилежного боку</b>!";
             }
             initGame();
         });
@@ -287,24 +279,41 @@
         function calculateWorldDimensions() {
             worldWidth = viewCols;
             if (isArcadeMode) {
-                worldHeight = viewRows + (currentLevel - 1) * 8; // Розширення
+                worldHeight = viewRows + (currentLevel - 1) * 8; 
             } else {
-                worldHeight = viewRows; // Фіксоване класичне поле
+                worldHeight = viewRows; 
             }
             buildWorldMap();
         }
 
         function buildWorldMap() {
             worldMap = Array(worldHeight).fill(null).map(() => Array(worldWidth).fill(TERRAIN.EMPTY));
-            if (!isArcadeMode) return; // У класиці карта порожня
+            if (!isArcadeMode) return; 
 
-            // Генерація перешкод для Аркади
+            // Покращений алгоритм генерації: будуємо лінії перешкод + поодинокі блоки
+            for (let y = 6; y < worldHeight - 2; y += 4) {
+                // Шанс згенерувати горизонтальну або вертикальну лінію-стіну на цьому секторі
+                if (Math.random() < 0.7) {
+                    let lineLength = Math.floor(Math.random() * (worldWidth / 2)) + 3; // Довжина лінії стіни
+                    let startX = Math.floor(Math.random() * (worldWidth - lineLength));
+                    
+                    for (let i = 0; i < lineLength; i++) {
+                        if (startX + i < worldWidth) {
+                            worldMap[y][startX + i] = TERRAIN.WALL;
+                        }
+                    }
+                }
+            }
+
+            // Додаємо поодинокі елементи (Вогонь, Болото та поодинокі Стіни) для хаотичності
             for(let y = 6; y < worldHeight; y++) {
                 for(let x = 0; x < worldWidth; x++) {
+                    if (worldMap[y][x] !== TERRAIN.EMPTY) continue; // Пропускаємо вже збудовані лінії стін
+
                     let rand = Math.random();
-                    if (rand < 0.06) worldMap[y][x] = TERRAIN.WALL;
-                    else if (rand < 0.11) worldMap[y][x] = TERRAIN.MUD;
-                    else if (rand < 0.14) worldMap[y][x] = TERRAIN.FIRE;
+                    if (rand < 0.02) worldMap[y][x] = TERRAIN.WALL; // Поодинока стіна
+                    else if (rand < 0.07) worldMap[y][x] = TERRAIN.MUD; // Болото
+                    else if (rand < 0.10) worldMap[y][x] = TERRAIN.FIRE; // Вогонь
                 }
             }
         }
@@ -366,7 +375,7 @@
                 calculateWorldDimensions();
                 spawnResources();
             } else if (!isArcadeMode) {
-                currentLevel = 1; // У класиці немає рівнів розширення
+                currentLevel = 1; 
             }
 
             scoreElement.innerText = score;
@@ -384,7 +393,6 @@
             }
         }
 
-        // Головне ядро руху
         function step(targetDx, targetDy) {
             if (!isPlaying) return;
 
@@ -392,12 +400,16 @@
             let nextX = head.x + targetDx;
             let nextY = head.y + targetDy;
 
-            // Перевірка кордонів
+            // Логіка кордонів карти
             if (nextX < 0 || nextX >= worldWidth || nextY < 0 || nextY >= worldHeight) {
                 if (!isArcadeMode) {
-                    gameOver("Ви вилетіли за межі поля! 🧱");
+                    // КЛАСИЧНИЙ РЕЖИМ: Змійка з'являється з іншого боку поля
+                    nextX = (nextX + worldWidth) % worldWidth;
+                    nextY = (nextY + worldHeight) % worldHeight;
+                } else {
+                    // АРКАДНИЙ РЕЖИМ: Кордон є фізичною стіною
+                    return; 
                 }
-                return; 
             }
 
             let targetTile = worldMap[nextY][nextX];
@@ -431,18 +443,17 @@
             draw();
         }
 
-        // Запуск класичного циклу автоматичного руху
         function startClassicLoop() {
             if (classicIntervalId) clearInterval(classicIntervalId);
             classicIntervalId = setInterval(() => {
                 if (isPlaying) step(currentDirection.x, currentDirection.y);
-            }, 200); // Швидкість автоматичного кроку у класиці
+            }, 200); 
         }
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Малюємо перешкоди (тільки для Аркади)
+            // Малювання перешкод
             for (let y = 0; y < viewRows; y++) {
                 let actualY = y + cameraY;
                 if (actualY >= worldHeight) break;
@@ -469,7 +480,7 @@
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
 
-            // Їжа
+            // Малювання преміум-ресурсів (Ананас тепер відображається коректно 🍍)
             items.forEach(item => {
                 let screenY = item.y - cameraY;
                 if (screenY >= 0 && screenY < viewRows) {
@@ -477,7 +488,7 @@
                 }
             });
 
-            // Змійка
+            // Малювання змійки
             snake.forEach((segment, index) => {
                 let screenY = segment.y - cameraY;
                 if (screenY >= 0 && screenY < viewRows) {
@@ -524,15 +535,12 @@
 
         restartButtonTop.addEventListener("click", () => { forceRestart(); });
 
-        // Обробка системного вводу напрямку/дії
         function handleInputDirection(dx, dy) {
             if (!isPlaying) return;
             
             if (isArcadeMode) {
-                // Аркадний покроковий режим двигуна
                 step(dx, dy);
             } else {
-                // Запобігаємо розвороту у власний хвіст у класичному авто-русі
                 if ((dx !== 0 && currentDirection.x === -dx) || (dy !== 0 && currentDirection.y === -dy)) return;
                 currentDirection = { x: dx, y: dy };
             }
