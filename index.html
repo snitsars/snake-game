@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Змійка: Еволюція та Математичний Порятунок</title>
+    <title>Змійка: Плавні Вигини та Математичний Порятунок</title>
     <style>
         body {
             margin: 0;
@@ -92,7 +92,6 @@
             box-sizing: border-box;
         }
 
-        /* Контейнер для міні-карти поверх основного поля */
         #minimap-container {
             position: absolute;
             top: 10px;
@@ -217,7 +216,7 @@
         <div id="start-screen">
             <h2 id="menu-title">🕹️ АРКАДНИЙ РЕЖИМ</h2>
             <p id="menu-desc" style="color:#aaa; max-width:400px; font-size:14px; margin:0 0 15px 0;">
-                Світ збільшується вниз! Змійка рухається <b>тільки від натискань</b>. Остерігайтеся пасток та стін.
+                Світ збільшується вниз! Змійка рухається <b>тільки від натискань</b>. Наявна міні-карта та математичний порятунок.
             </p>
             <button class="start-btn" id="start-button">СТАРТ</button>
         </div>
@@ -232,7 +231,7 @@
 
         <div id="math-screen">
             <h2>🤔 ДРУГИЙ ШАНС!</h2>
-            <p style="color: #ffb74d;">Розв'яжіть приклад, щоб продовжити гру без втрати прогресу:</p>
+            <p style="color: #ffb74d;">Розв'яжіть приклад, щоб врятувати змійку:</p>
             <h1 id="math-question" style="font-size: 36px; letter-spacing: 2px; margin: 15px 0;">25 + 14 = ?</h1>
             <input type="number" id="math-input" placeholder="?">
             <br>
@@ -271,7 +270,6 @@
         const vicLenLabel = document.getElementById("vic-len");
         const vicTimeLabel = document.getElementById("vic-time");
 
-        // Математичний екран
         const mathScreen = document.getElementById("math-screen");
         const mathQuestion = document.getElementById("math-question");
         const mathInput = document.getElementById("math-input");
@@ -326,7 +324,7 @@
                 modeText.innerText = "КЛАСИКА 🍏";
                 modeText.style.color = "#2196F3";
                 menuTitle.innerText = "🍏 КЛАСИЧНИЙ РЕЖИМ";
-                menuDesc.innerHTML = "Поле фіксоване. Змійка <b>рухається сама</b>. При виході за екран — з'являється з протилежного боку.";
+                menuDesc.innerHTML = "Поле фіксоване. Змійка <b>рухається сама</b>. При виході за екран — з'являється з іншого боку. Має математичний порятунок.";
                 minimapContainer.style.display = "none";
             }
             initGame();
@@ -356,9 +354,7 @@
             buildWorldMap();
         }
 
-        // Безпечна процедурна генерація - стіни не перетинають тіло змійки
         function buildWorldMap() {
-            // Зберігаємо старі блоки, якщо вони вже були згенеровані (щоб не міняти поле під змійкою при розширенні)
             let oldMap = worldMap;
             worldMap = Array(worldHeight).fill(null).map(() => Array(worldWidth).fill(TERRAIN.EMPTY));
             
@@ -371,11 +367,9 @@
 
                     if (!isArcadeMode || y < 6) continue;
 
-                    // Перевірка: чи не знаходиться в цій точці змійка прямо зараз
                     let isCollidingWithSnake = snake.some(seg => seg.x === x && seg.y === y);
                     if (isCollidingWithSnake) continue;
 
-                    // Генерація ліній стін
                     if (y % 4 === 0 && x === 0 && Math.random() < 0.6) {
                         let lineLength = Math.floor(Math.random() * (worldWidth / 2)) + 3;
                         for (let i = 0; i < lineLength; i++) {
@@ -385,7 +379,6 @@
                         }
                     }
 
-                    // Поодинокі об'єкти
                     if (worldMap[y][x] === TERRAIN.EMPTY) {
                         let rand = Math.random();
                         if (rand < 0.02) worldMap[y][x] = TERRAIN.WALL;
@@ -460,7 +453,6 @@
             
             if (isArcadeMode && calculatedLevel > currentLevel) {
                 currentLevel = calculatedLevel;
-                // ТУТ ВИПРАВЛЕНО: Змійка залишається на місці, поле розширюється вниз
                 worldHeight = viewRows + (currentLevel - 1) * 8; 
                 buildWorldMap(); 
                 spawnResources();
@@ -492,7 +484,7 @@
             if (!isArcadeMode) startClassicLoop();
         });
 
-        // Ініціація математичного порятунку
+        // Математичний порятунок (Працює тепер і для класики, і для аркади)
         function triggerMathRescue() {
             isPlaying = false;
             if (classicIntervalId) clearInterval(classicIntervalId);
@@ -505,7 +497,6 @@
                 mathCorrectAnswer = num1 + num2;
                 mathQuestion.innerText = `${num1} + ${num2} = ?`;
             } else {
-                // Пакет унеможливлення від'ємних чисел
                 if (num1 < num2) { let t = num1; num1 = num2; num2 = t; }
                 mathCorrectAnswer = num1 - num2;
                 mathQuestion.innerText = `${num1} - ${num2} = ?`;
@@ -519,12 +510,9 @@
         mathSubmitBtn.addEventListener("click", () => {
             let userAnswer = parseInt(mathInput.value);
             if (userAnswer === mathCorrectAnswer) {
-                // Порятунок успішний! Відкатуємо голову назад безпечно
                 mathScreen.style.display = "none";
                 isPlaying = true;
                 
-                // Переміщуємо голову на безпечну клітину поруч
-                let head = snake[0];
                 let safePos = getRandomEmptyPos();
                 snake[0] = { x: safePos.x, y: safePos.y };
                 
@@ -533,7 +521,7 @@
                 if (!isArcadeMode) startClassicLoop();
             } else {
                 mathScreen.style.display = "none";
-                executeActualGameOver("Неправильна відповідь! Навчайтеся краще 😭");
+                executeActualGameOver("Неправильна відповідь! Гру закінчено 😭");
             }
         });
 
@@ -567,14 +555,12 @@
             if (targetTile === TERRAIN.WALL) return;
             
             if (targetTile === TERRAIN.FIRE) {
-                if (isArcadeMode) { triggerMathRescue(); } 
-                else { gameOver("Змійка згоріла у вогні! 🔥"); }
+                triggerMathRescue();
                 return;
             }
 
             if (snake.some((seg, idx) => idx !== 0 && seg.x === nextX && seg.y === nextY)) {
-                if (isArcadeMode) { triggerMathRescue(); } 
-                else { gameOver("Ви врізалися у власний хвіст! ☠️"); }
+                triggerMathRescue();
                 return;
             }
 
@@ -615,7 +601,6 @@
             let scaleX = miniCanvas.width / worldWidth;
             let scaleY = miniCanvas.height / worldHeight;
 
-            // Візуалізація перешкод на мінікарті
             for (let y = 0; y < worldHeight; y++) {
                 for (let x = 0; x < worldWidth; x++) {
                     if (worldMap[y][x] === TERRAIN.WALL) {
@@ -625,7 +610,6 @@
                 }
             }
 
-            // Позиція голови змійки
             if (snake.length > 0) {
                 miniCtx.fillStyle = "#00ff00";
                 miniCtx.fillRect(snake[0].x * scaleX, snake[0].y * scaleY, scaleX * 1.5, scaleY * 1.5);
@@ -635,6 +619,7 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+            // Малювання оточення
             for (let y = 0; y < viewRows; y++) {
                 let actualY = y + cameraY;
                 if (actualY >= worldHeight) break;
@@ -661,6 +646,7 @@
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
 
+            // Малювання їжі
             items.forEach(item => {
                 let screenY = item.y - cameraY;
                 if (screenY >= 0 && screenY < viewRows) {
@@ -668,27 +654,77 @@
                 }
             });
 
-            snake.forEach((segment, index) => {
-                let screenY = segment.y - cameraY;
-                if (screenY >= 0 && screenY < viewRows) {
-                    let rx = segment.x * gridSize;
-                    let ry = screenY * gridSize;
+            // --- НОВИЙ АНАТОМІЧНИЙ РУШІЙ РЕНДЕРИНГУ ЗМІЙКИ СИЛУЕТОМ КРИВИХ ---
+            if (snake.length > 0) {
+                // Перевіряємо чи голова у видимій зоні камери
+                let headScreenY = snake[0].y - cameraY;
 
-                    if (index === 0) {
-                        ctx.fillStyle = isArcadeMode ? "#2E7D32" : "#0288D1";
+                // Малюємо спочатку очі на голові для реалістичності
+                let hx = snake[0].x * gridSize + gridSize / 2;
+                let hy = headScreenY * gridSize + gridSize / 2;
+
+                // Плавна промальовка тіла кривими Безьє зі зменшенням товщини сегментів від голови до хвоста
+                for (let i = 0; i < snake.length; i++) {
+                    let segment = snake[i];
+                    let sY = segment.y - cameraY;
+                    
+                    if (sY >= -1 && sY <= viewRows + 1) {
+                        let cx = segment.x * gridSize + gridSize / 2;
+                        let cy = sY * gridSize + gridSize / 2;
+
+                        // Динамічний розрахунок розміру елементів (від найбільшого до найменшого)
+                        let progress = i / snake.length;
+                        let radius = (gridSize / 2) * (1.0 - progress * 0.65); // Звужується до хвоста на 65%
+                        if (i === 0) radius = gridSize / 2; // Голова — кругла та найбільша
+
                         ctx.beginPath();
-                        ctx.arc(rx + gridSize/2, ry + gridSize/2, gridSize/2, 0, Math.PI*2);
-                        ctx.fill();
-                    } else {
-                        ctx.fillStyle = isArcadeMode ? 
-                            `hsl(120, 60%, ${Math.max(25, 50 - index * 2)}%)` : 
-                            `hsl(200, 70%, ${Math.max(30, 60 - index * 2)}%)`;
-                        ctx.beginPath();
-                        ctx.roundRect(rx + 2, ry + 2, gridSize - 4, gridSize - 4, 6);
-                        ctx.fill();
+                        
+                        if (i < snake.length - 1) {
+                            // Зв'язуємо поточний та наступний блоки згладженою лінією
+                            let nextSegment = snake[i + 1];
+                            let nY = nextSegment.y - cameraY;
+                            let nx = nextSegment.x * gridSize + gridSize / 2;
+                            let ny = nY * gridSize + gridSize / 2;
+                            
+                            // Розраховуємо середню опорну точку для кривої Безьє
+                            let midX = (cx + nx) / 2;
+                            let midY = (cy + ny) / 2;
+
+                            ctx.lineWidth = radius * 2;
+                            ctx.lineCap = "round";
+                            ctx.lineJoin = "round";
+                            
+                            // Кольорові палітри для режимів
+                            if (isArcadeMode) {
+                                ctx.strokeStyle = `hsl(120, 70%, ${Math.max(20, 55 - i * 1.5)}%)`; // Аркада — зелена
+                            } else {
+                                ctx.strokeStyle = `hsl(205, 85%, ${Math.max(25, 60 - i * 1.5)}%)`; // Класика — синя
+                            }
+
+                            ctx.moveTo(cx, cy);
+                            ctx.quadraticCurveTo(cx, cy, midX, midY);
+                            ctx.stroke();
+                        } else {
+                            // Кінчик хвоста
+                            ctx.fillStyle = isArcadeMode ? "#1b5e20" : "#0d47a1";
+                            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
                     }
                 }
-            });
+
+                // Малюємо зіниці на голові
+                ctx.fillStyle = "#ffffff";
+                ctx.beginPath();
+                ctx.arc(hx - 4, hy - 4, 3, 0, Math.PI * 2);
+                ctx.arc(hx + 4, hy - 4, 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = "#000000";
+                ctx.beginPath();
+                ctx.arc(hx - 4, hy - 4, 1.2, 0, Math.PI * 2);
+                ctx.arc(hx + 4, hy - 4, 1.2, 0, Math.PI * 2);
+                ctx.fill();
+            }
 
             drawMinimap();
         }
