@@ -93,10 +93,10 @@
             box-sizing: border-box;
         }
 
-        #start-screen {
+        #start-screen, #victory-screen {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0, 0, 0, 0.93);
             border-radius: 12px;
             display: flex;
             flex-direction: column;
@@ -108,7 +108,13 @@
             box-sizing: border-box;
         }
 
-        .start-btn {
+        #victory-screen {
+            background: rgba(10, 25, 10, 0.95);
+            border: 3px solid #4CAF50;
+            display: none;
+        }
+
+        .start-btn, .victory-btn {
             background-color: #4CAF50;
             color: white;
             border: none;
@@ -120,6 +126,23 @@
             margin-top: 15px;
             box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
             -webkit-tap-highlight-color: transparent;
+        }
+
+        .victory-btn {
+            background-color: #FFD700;
+            color: #000;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+        }
+
+        .animated-emoji {
+            font-size: 50px;
+            margin: 10px 0;
+            animation: bounce 1.5s infinite alternate;
+        }
+
+        @keyframes bounce {
+            from { transform: scale(0.9); }
+            to { transform: scale(1.1); }
         }
 
         .controls {
@@ -180,12 +203,23 @@
     
     <div class="canvas-container">
         <canvas id="gameCanvas"></canvas>
+        
+        <!-- Екран старту / програшу -->
         <div id="start-screen">
             <h2 id="menu-title">🕹️ АРКАДНИЙ РЕЖИМ</h2>
             <p id="menu-desc" style="color:#aaa; max-width:400px; font-size:14px; margin:0 0 15px 0;">
                 Світ збільшується вниз на кожному рівні! Змійка рухається <b>тільки тоді, коли ви натискаєте управління</b>. Остерігайтеся ліній стін та пасток.
             </p>
             <button class="start-btn" id="start-button">СТАРТ</button>
+        </div>
+
+        <!-- Вікно святкування кожних 100 елементів -->
+        <div id="victory-screen">
+            <div class="animated-emoji">🎆 🔥 🏆 🔥 🎆</div>
+            <h2>НЕЙМОВІРНО! НОВИЙ РЕКОРД!</h2>
+            <p style="font-size: 18px; margin: 10px 0;">Ваша змійка досягла довжини <b id="vic-len" style="color: #FFD700;">100</b> елементів!</p>
+            <p style="color: #aae2aa;">Час поточної сесії: <b id="vic-time">00:00</b></p>
+            <button class="victory-btn" id="victory-continue-btn">ПРОДОВЖИТИ 🐍</button>
         </div>
     </div>
 
@@ -203,6 +237,7 @@
         const levelElement = document.getElementById("level-val");
         const lengthElement = document.getElementById("len-val");
         const modeText = document.getElementById("mode-text");
+        
         const startScreen = document.getElementById("start-screen");
         const startButton = document.getElementById("start-button");
         const restartButtonTop = document.getElementById("restart-button-top");
@@ -210,6 +245,12 @@
         const menuTitle = document.getElementById("menu-title");
         const menuDesc = document.getElementById("menu-desc");
         const touchControlsPanel = document.getElementById("touch-controls-panel");
+
+        // Елементи екрану тріумфу
+        const victoryScreen = document.getElementById("victory-screen");
+        const victoryContinueBtn = document.getElementById("victory-continue-btn");
+        const vicLenLabel = document.getElementById("vic-len");
+        const vicTimeLabel = document.getElementById("vic-time");
 
         const gridSize = 24; 
         let viewCols = 0;   
@@ -230,12 +271,16 @@
         let isPlaying = false;
         let cameraY = 0; 
 
+        // Таймінги сесії та вехи нагород
+        let sessionStartTime = null;
+        let nextMilestone = 100; // Наступна ціль для виклику салюту
+
         const premiumPool = [
             { emoji: '🍇', value: 2 },
             { emoji: '🍌', value: 3 },
             { emoji: '🍒', value: 4 },
             { emoji: '🍓', value: 5 },
-            { emoji: '🍍', value: 6 }, // Виправлено: тепер тут правильний емодзі ананаса замість тексту
+            { emoji: '🍍', value: 6 }, 
             { emoji: '🍉', value: 8 },
             { emoji: '💎', value: 10 }
         ];
@@ -290,11 +335,9 @@
             worldMap = Array(worldHeight).fill(null).map(() => Array(worldWidth).fill(TERRAIN.EMPTY));
             if (!isArcadeMode) return; 
 
-            // Покращений алгоритм генерації: будуємо лінії перешкод + поодинокі блоки
             for (let y = 6; y < worldHeight - 2; y += 4) {
-                // Шанс згенерувати горизонтальну або вертикальну лінію-стіну на цьому секторі
                 if (Math.random() < 0.7) {
-                    let lineLength = Math.floor(Math.random() * (worldWidth / 2)) + 3; // Довжина лінії стіни
+                    let lineLength = Math.floor(Math.random() * (worldWidth / 2)) + 3; 
                     let startX = Math.floor(Math.random() * (worldWidth - lineLength));
                     
                     for (let i = 0; i < lineLength; i++) {
@@ -305,15 +348,14 @@
                 }
             }
 
-            // Додаємо поодинокі елементи (Вогонь, Болото та поодинокі Стіни) для хаотичності
             for(let y = 6; y < worldHeight; y++) {
                 for(let x = 0; x < worldWidth; x++) {
-                    if (worldMap[y][x] !== TERRAIN.EMPTY) continue; // Пропускаємо вже збудовані лінії стін
+                    if (worldMap[y][x] !== TERRAIN.EMPTY) continue; 
 
                     let rand = Math.random();
-                    if (rand < 0.02) worldMap[y][x] = TERRAIN.WALL; // Поодинока стіна
-                    else if (rand < 0.07) worldMap[y][x] = TERRAIN.MUD; // Болото
-                    else if (rand < 0.10) worldMap[y][x] = TERRAIN.FIRE; // Вогонь
+                    if (rand < 0.02) worldMap[y][x] = TERRAIN.WALL; 
+                    else if (rand < 0.07) worldMap[y][x] = TERRAIN.MUD; 
+                    else if (rand < 0.10) worldMap[y][x] = TERRAIN.FIRE; 
                 }
             }
         }
@@ -326,7 +368,9 @@
             currentLevel = 1;
             score = 0;
             cameraY = 0;
+            nextMilestone = 100; 
             currentDirection = { x: 1, y: 0 };
+            sessionStartTime = Date.now(); // Засікаємо старт сесії
             
             calculateWorldDimensions();
 
@@ -367,6 +411,15 @@
             return {x: 1, y: 1};
         }
 
+        function getFormattedSessionTime() {
+            if (!sessionStartTime) return "00:00";
+            let diffMs = Date.now() - sessionStartTime;
+            let totalSeconds = Math.floor(diffMs / 1000);
+            let mins = Math.floor(totalSeconds / 60);
+            let secs = totalSeconds % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
         function updateLevelMetrics() {
             let calculatedLevel = Math.min(10, Math.floor(snake.length / 10) + 1);
             
@@ -381,7 +434,33 @@
             scoreElement.innerText = score;
             levelElement.innerText = isArcadeMode ? currentLevel : 1;
             lengthElement.innerText = snake.length;
+
+            // Перевірка досягнення вехи у 100 елементів (і кожні наступні 100 елементів)
+            if (snake.length >= nextMilestone) {
+                triggerMilestoneCelebration(nextMilestone);
+                nextMilestone += 100; // Задаємо наступну планку
+            }
         }
+
+        function triggerMilestoneCelebration(reachedLength) {
+            // Зупиняємо хід гри
+            isPlaying = false;
+            if (classicIntervalId) clearInterval(classicIntervalId);
+
+            // Оновлюємо дані у вікні нагороди
+            vicLenLabel.innerText = reachedLength;
+            vicTimeLabel.innerText = getFormattedSessionTime();
+
+            // Показуємо модальне вікно привітання
+            victoryScreen.style.display = "flex";
+        }
+
+        // Кнопка продовження після тріумфу
+        victoryContinueBtn.addEventListener("click", () => {
+            victoryScreen.style.display = "none";
+            isPlaying = true;
+            if (!isArcadeMode) startClassicLoop(); // Повертаємо авто-рух для класики
+        });
 
         function centerCamera() {
             if (!isArcadeMode) { cameraY = 0; return; }
@@ -400,14 +479,11 @@
             let nextX = head.x + targetDx;
             let nextY = head.y + targetDy;
 
-            // Логіка кордонів карти
             if (nextX < 0 || nextX >= worldWidth || nextY < 0 || nextY >= worldHeight) {
                 if (!isArcadeMode) {
-                    // КЛАСИЧНИЙ РЕЖИМ: Змійка з'являється з іншого боку поля
                     nextX = (nextX + worldWidth) % worldWidth;
                     nextY = (nextY + worldHeight) % worldHeight;
                 } else {
-                    // АРКАДНИЙ РЕЖИМ: Кордон є фізичною стіною
                     return; 
                 }
             }
@@ -453,7 +529,6 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Малювання перешкод
             for (let y = 0; y < viewRows; y++) {
                 let actualY = y + cameraY;
                 if (actualY >= worldHeight) break;
@@ -480,7 +555,6 @@
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
 
-            // Малювання преміум-ресурсів (Ананас тепер відображається коректно 🍍)
             items.forEach(item => {
                 let screenY = item.y - cameraY;
                 if (screenY >= 0 && screenY < viewRows) {
@@ -488,7 +562,6 @@
                 }
             });
 
-            // Малювання змійки
             snake.forEach((segment, index) => {
                 let screenY = segment.y - cameraY;
                 if (screenY >= 0 && screenY < viewRows) {
@@ -515,7 +588,7 @@
         function gameOver(msg) {
             isPlaying = false;
             if (classicIntervalId) clearInterval(classicIntervalId);
-            startScreen.innerHTML = `<h2>КІНЕЦЬ ГРИ 💀</h2><p style="color:#ff6b6b;">${msg}</p><p>Рахунок: <b>${score}</b></p><button class="start-btn" id="start-button" onclick="forceRestart()">ГРАТИ ЗНОВУ</button>`;
+            startScreen.innerHTML = `<h2>КІНЕЦЬ ГРИ 💀</h2><p style="color:#ff6b6b;">${msg}</p><p>Рахунок: <b>${score}</b></p><p style="color:#aaa; font-size:13px;">Тривалість сесії: ${getFormattedSessionTime()}</p><button class="start-btn" id="start-button" onclick="forceRestart()">ГРАТИ ЗНОВУ</button>`;
             startScreen.style.display = "flex";
         }
 
@@ -523,6 +596,7 @@
             initGame();
             isPlaying = true;
             startScreen.style.display = "none";
+            victoryScreen.style.display = "none";
             if (!isArcadeMode) startClassicLoop();
         }
 
