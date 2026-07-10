@@ -3,26 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Змійка: iPhone iOS Оптимізація</title>
+    <title>Змійка: Класика vs Аркада</title>
     <style>
         body {
             margin: 0;
-            background-color: #1a1a1a;
+            background-color: #121212;
             color: white;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
-            /* Використовуємо динамічну висоту dvh для уникнення багів Safari */
             height: 100vh;
             height: 100dvh;
             padding: 0 15px;
             box-sizing: border-box;
             overflow: hidden;
-            touch-action: manipulation;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
-        /* Верхня панель із безпечним відступом від годинника iPhone */
         .header-panel {
             width: 100%;
             max-width: 600px;
@@ -30,36 +30,51 @@
             justify-content: space-between;
             align-items: center;
             flex-shrink: 0;
-            margin-top: 38px; /* Гарантований відступ під статус-бар (годинник/заряд батареї) */
+            margin-top: calc(20px + env(safe-area-inset-top));
             margin-bottom: 10px;
         }
 
+        #meta-board {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            font-size: 14px;
+        }
+
         #score-board {
-            font-size: 22px;
+            font-size: 20px;
             font-weight: bold;
+            color: #4CAF50;
         }
 
         .nav-buttons {
             display: flex;
-            gap: 8px;
+            gap: 6px;
         }
 
         .header-btn {
-            background-color: #333;
+            background-color: #2a2a2a;
             color: white;
-            border: none;
-            padding: 8px 14px;
-            font-size: 14px;
+            border: 1px solid #444;
+            padding: 8px 12px;
+            font-size: 13px;
             font-weight: bold;
             border-radius: 12px;
             cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: all 0.2s ease;
         }
 
-        .header-btn:active {
-            background-color: #555;
+        /* Стилізація активного перемикача режимів */
+        #mode-toggle-btn {
+            background-color: #d32f2f; /* Червоний колір для Аркади */
+            border-color: #f44336;
+        }
+        #mode-toggle-btn.classic {
+            background-color: #1976D2; /* Синій колір для Класики */
+            border-color: #2196F3;
         }
 
-        /* Ігрове поле гнучко займає простір, що залишився */
         .canvas-container {
             position: relative;
             width: 100%;
@@ -71,10 +86,10 @@
         canvas {
             width: 100%;
             height: 100%;
-            background-color: #111;
+            background-color: #181818;
             border: 3px solid #333;
             border-radius: 12px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.6);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.8);
             display: block;
             box-sizing: border-box;
         }
@@ -82,53 +97,60 @@
         #start-screen {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(0, 0, 0, 0.9);
             border-radius: 12px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             z-index: 10;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
         }
 
         .start-btn {
             background-color: #4CAF50;
             color: white;
             border: none;
-            padding: 14px 32px;
-            font-size: 20px;
+            padding: 16px 40px;
+            font-size: 22px;
             font-weight: bold;
-            border-radius: 22px;
+            border-radius: 25px;
             cursor: pointer;
+            margin-top: 15px;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+            -webkit-tap-highlight-color: transparent;
         }
 
-        /* Компактний джойстик із безпечною зоною знизу */
         .controls {
-            margin-top: 12px;
-            margin-bottom: calc(15px + env(safe-area-inset-bottom)); /* Враховує індикатор Home на iPhone */
+            margin-top: 15px;
+            margin-bottom: calc(15px + env(safe-area-inset-bottom));
             display: grid;
-            grid-template-columns: repeat(3, 70px);
-            grid-template-rows: repeat(2, 70px);
-            gap: 8px;
+            grid-template-columns: repeat(3, 75px);
+            grid-template-rows: repeat(2, 75px);
+            gap: 10px;
             justify-content: center;
             flex-shrink: 0;
         }
 
         .btn {
-            background-color: #2b2b2b;
+            background-color: #222;
             color: white;
-            border: none;
+            border: 2px solid #333;
             border-radius: 50%;
-            font-size: 24px;
+            font-size: 26px;
             font-weight: bold;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.5);
+            -webkit-tap-highlight-color: transparent;
         }
 
         .btn:active {
-            background-color: #444;
+            background-color: #4CAF50;
+            border-color: #81C784;
         }
 
         #btn-up { grid-column: 2; grid-row: 1; }
@@ -136,38 +158,41 @@
         #btn-down { grid-column: 2; grid-row: 2; }
         #btn-right { grid-column: 3; grid-row: 2; }
 
-        /* На ПК повністю ховаємо джойстик */
         @media (min-width: 768px) {
-            .controls {
-                display: none;
-            }
-            .header-panel {
-                margin-top: 15px; /* На ПК статус-бару немає, повертаємо стандартний відступ */
-            }
-            body {
-                padding: 20px;
-            }
+            /* Ховаємо екранні кнопки на ПК, якщо активний класичний автоматичний режим */
+            .controls.classic-hide { display: none; }
+            .controls { display: none; }
+            .header-panel { margin-top: 15px; }
+            body { padding: 20px; touch-action: auto; }
         }
     </style>
 </head>
 <body>
 
     <div class="header-panel">
-        <div id="score-board">Рахунок: <span id="score">0</span></div>
+        <div id="meta-board">
+            <div id="score-board">Рахунок: <span id="score">0</span></div>
+            <div id="mode-indicators">Режим: <b id="mode-text" style="color: #ff4336;">АРКАДА 🕹️</b></div>
+            <div>Рівень: <span id="level-val">1</span>/10 (Довжина: <span id="len-val">3</span>)</div>
+        </div>
         <div class="nav-buttons">
-            <button class="header-btn" id="restart-button-top">РЕСТАРТ 🔄</button>
-            <button class="header-btn" id="pause-button">ПАУЗА ⏸️</button>
+            <button class="header-btn" id="mode-toggle-btn">РЕЖИМ: АРКАДА</button>
+            <button class="header-btn" id="restart-button-top">🔄</button>
         </div>
     </div>
     
     <div class="canvas-container">
         <canvas id="gameCanvas"></canvas>
         <div id="start-screen">
+            <h2 id="menu-title">🕹️ АРКАДНИЙ РЕЖИМ</h2>
+            <p id="menu-desc" style="color:#aaa; max-width:400px; font-size:14px; margin:0 0 15px 0;">
+                Світ збільшується вниз на кожному рівні! Змійка рухається <b>тільки тоді, коли ви натискаєте управління</b>. Остерігайтеся стін, болота та вогню.
+            </p>
             <button class="start-btn" id="start-button">СТАРТ</button>
         </div>
     </div>
 
-    <div class="controls">
+    <div class="controls" id="touch-controls-panel">
         <button class="btn" id="btn-up">↑</button>
         <button class="btn" id="btn-left">←</button>
         <button class="btn" id="btn-down">↓</button>
@@ -178,337 +203,361 @@
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
         const scoreElement = document.getElementById("score");
+        const levelElement = document.getElementById("level-val");
+        const lengthElement = document.getElementById("len-val");
+        const modeText = document.getElementById("mode-text");
         const startScreen = document.getElementById("start-screen");
         const startButton = document.getElementById("start-button");
-        const pauseButton = document.getElementById("pause-button");
         const restartButtonTop = document.getElementById("restart-button-top");
+        const modeToggleBtn = document.getElementById("mode-toggle-btn");
+        const menuTitle = document.getElementById("menu-title");
+        const menuDesc = document.getElementById("menu-desc");
+        const touchControlsPanel = document.getElementById("touch-controls-panel");
 
-        const gridSize = 18; 
-        let colsCount = 0;   
-        let rowsCount = 0;   
+        const gridSize = 24; 
+        let viewCols = 0;   
+        let viewRows = 0;   
+
+        // Параметри карти
+        let isArcadeMode = true; // Дефолтний стан
+        let worldWidth = 0;
+        let worldHeight = 0; 
+        let worldMap = []; 
 
         let snake = [];
-        let regularApple = { x: 0, y: 0, emoji: '🍎', value: 1 };
-        let customItem = null; 
+        let items = [];
+        let currentDirection = { x: 1, y: 0 }; // Для класичного авто-руху
+        let classicIntervalId = null;
         
-        let dx = 1; 
-        let dy = 0;
+        let currentLevel = 1;
         let score = 0;
-        let gameInterval = null;
-        let customItemTimer = null; 
         let isPlaying = false;
-        let isPaused = false;
-        let segmentsToAdd = 0;
-        let animationFrame = 0;
+        let cameraY = 0; 
 
-        const pool = [
-            { emoji: '🍌', type: 'booster', value: 2, weight: 20 },
-            { emoji: '🍊', type: 'booster', value: 3, weight: 18 },
-            { emoji: '🍇', type: 'booster', value: 4, weight: 15 },
-            { emoji: '🍒', type: 'booster', value: 5, weight: 12 },
-            { emoji: '🍑', type: 'booster', value: 6, weight: 10 },
-            { emoji: '🥝', type: 'booster', value: 7, weight: 8 },
-            { emoji: '🍓', type: 'booster', value: 8, weight: 6 },
-            { emoji: '🍈', type: 'booster', value: 9, weight: 4 },
-            { emoji: '🍉', type: 'booster', value: 10, weight: 2 }, 
-            { emoji: '🍍', type: 'booster', value: 10, weight: 2 }, 
-            { emoji: '🍟', type: 'decreasor', value: 2, weight: 15 },
-            { emoji: '🍕', type: 'decreasor', value: 5, weight: 8 },
-            { emoji: '🍔', type: 'decreasor', value: 10, weight: 3 }  
+        const premiumPool = [
+            { emoji: '🍇', value: 2 },
+            { emoji: '🍌', value: 3 },
+            { emoji: '🍒', value: 4 },
+            { emoji: '🍓', value: 5 },
+            { emoji: ' Pineapple', value: 6 },
+            { emoji: '🍉', value: 8 },
+            { emoji: '💎', value: 10 }
         ];
+
+        const TERRAIN = { EMPTY: 0, WALL: 1, MUD: 2, FIRE: 3 };
+
+        // Перемикач режимів гри
+        modeToggleBtn.addEventListener("click", () => {
+            if (isPlaying) return; // Не можна міняти режим під час матчу
+            
+            isArcadeMode = !isArcadeMode;
+            if (isArcadeMode) {
+                modeToggleBtn.innerText = "РЕЖИМ: АРКАДА";
+                modeToggleBtn.classList.remove("classic");
+                modeText.innerText = "АРКАДА 🕹️";
+                modeText.style.color = "#ff4336";
+                menuTitle.innerText = "🕹️ АРКАДНИЙ РЕЖИМ";
+                menuDesc.innerHTML = "Світ збільшується вниз на кожному рівні! Змійка рухається <b>тільки тоді, коли ви натискаєте управління</b>. Остерігайтеся пасток.";
+                touchControlsPanel.style.display = "grid";
+            } else {
+                modeToggleBtn.innerText = "РЕЖИМ: КЛАСИКА";
+                modeToggleBtn.classList.add("classic");
+                modeText.innerText = "КЛАСИКА 🍏";
+                modeText.style.color = "#2196F3";
+                menuTitle.innerText = "🍏 КЛАСИЧНИЙ РЕЖИМ";
+                menuDesc.innerHTML = "Стандартна змійка на замкнутому фіксованому полі. Вона <b>рухається автоматично за таймером</b>. Жодних перешкод, тільки збір їжі!";
+                // Показуємо стрілки на девайсах, ховаємо на ПК автоматично через СSS
+                touchControlsPanel.style.display = "grid"; 
+            }
+            initGame();
+        });
 
         function resizeCanvas() {
             const rect = canvas.getBoundingClientRect();
             canvas.width = Math.floor(rect.width);
             canvas.height = Math.floor(rect.height);
+            viewCols = Math.floor(canvas.width / gridSize);
+            viewRows = Math.floor(canvas.height / gridSize);
 
-            colsCount = Math.floor(canvas.width / gridSize);
-            rowsCount = Math.floor(canvas.height / gridSize);
-
-            if (isPlaying) draw();
+            if (!isPlaying) {
+                calculateWorldDimensions();
+            }
         }
 
-        window.addEventListener('resize', resizeCanvas);
+        function calculateWorldDimensions() {
+            worldWidth = viewCols;
+            if (isArcadeMode) {
+                worldHeight = viewRows + (currentLevel - 1) * 8; // Розширення
+            } else {
+                worldHeight = viewRows; // Фіксоване класичне поле
+            }
+            buildWorldMap();
+        }
+
+        function buildWorldMap() {
+            worldMap = Array(worldHeight).fill(null).map(() => Array(worldWidth).fill(TERRAIN.EMPTY));
+            if (!isArcadeMode) return; // У класиці карта порожня
+
+            // Генерація перешкод для Аркади
+            for(let y = 6; y < worldHeight; y++) {
+                for(let x = 0; x < worldWidth; x++) {
+                    let rand = Math.random();
+                    if (rand < 0.06) worldMap[y][x] = TERRAIN.WALL;
+                    else if (rand < 0.11) worldMap[y][x] = TERRAIN.MUD;
+                    else if (rand < 0.14) worldMap[y][x] = TERRAIN.FIRE;
+                }
+            }
+        }
+
+        window.addEventListener('resize', () => { resizeCanvas(); draw(); });
 
         function initGame() {
-            resizeCanvas(); 
-            
-            const startY = Math.floor(rowsCount / 2);
-            snake = [{x: 5, y: startY}, {x: 4, y: startY}, {x: 3, y: startY}];
-            
-            dx = 1;
-            dy = 0;
+            if (classicIntervalId) clearInterval(classicIntervalId);
+            resizeCanvas();
+            currentLevel = 1;
             score = 0;
-            segmentsToAdd = 0;
-            isPaused = false;
-            animationFrame = 0;
-            clearCustomItem();
+            cameraY = 0;
+            currentDirection = { x: 1, y: 0 };
             
-            scoreElement.innerText = score;
-            pauseButton.innerText = "ПАУЗА ⏸️";
-            
-            startNewRound();
+            calculateWorldDimensions();
+
+            const startY = 3;
+            snake = [
+                {x: 4, y: startY},
+                {x: 3, y: startY},
+                {x: 2, y: startY}
+            ];
+
+            updateLevelMetrics();
+            spawnResources();
             draw();
         }
 
-        function startGame() {
-            if (isPlaying && !isPaused) return;
-            if (isPaused) { togglePause(); return; }
-            initGame();
-            isPlaying = true;
-            startScreen.style.display = "none";
-            gameInterval = setInterval(update, 130);
-        }
-
-        function forceRestart() {
-            clearInterval(gameInterval);
-            initGame();
-            isPlaying = true;
-            startScreen.style.display = "none";
-            gameInterval = setInterval(update, 130);
-        }
-
-        function togglePause() {
-            if (!isPlaying) return;
-            if (!isPaused) {
-                isPaused = true;
-                clearInterval(gameInterval);
-                pauseButton.innerText = "ГРАТИ ▶️";
-                ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.font = "bold 30px Arial";
-                ctx.fillStyle = "white";
-                ctx.textAlign = "center";
-                ctx.fillText("ПАУЗА", canvas.width / 2, canvas.height / 2);
-            } else {
-                isPaused = false;
-                pauseButton.innerText = "ПАУЗА ⏸️";
-                gameInterval = setInterval(update, 130);
-            }
-        }
-
-        function gameOver() {
-            isPlaying = false;
-            clearInterval(gameInterval);
-            clearCustomItem();
-            startButton.innerText = "ГРАТИ ЗНОВУ";
-            startScreen.style.display = "flex";
-        }
-
-        function getRandPos() {
-            return { 
-                x: Math.floor(Math.random() * colsCount), 
-                y: Math.floor(Math.random() * rowsCount) 
-            };
-        }
-
-        function isOccupied(pos) {
-            return snake.some(s => s.x === pos.x && s.y === pos.y);
-        }
-
-        function clearCustomItem() {
-            customItem = null;
-            if (customItemTimer) {
-                clearTimeout(customItemTimer);
-                customItemTimer = null;
-            }
-        }
-
-        function getRandomItemFromPool() {
-            const totalWeight = pool.reduce((sum, item) => sum + item.weight, 0);
-            let randomNum = Math.random() * totalWeight;
-            for (let i = 0; i < pool.length; i++) {
-                if (randomNum < pool[i].weight) return { ...pool[i] };
-                randomNum -= pool[i].weight;
-            }
-            return { ...pool[0] };
-        }
-
-        function startNewRound() {
-            clearCustomItem();
-
-            let applePos = getRandPos();
-            while (isOccupied(applePos)) { applePos = getRandPos(); }
-            regularApple.x = applePos.x;
-            regularApple.y = applePos.y;
-
-            const spawnChance = Math.random() < 0.35; 
+        function spawnResources() {
+            items = [];
+            let totalFoodCount = isArcadeMode ? Math.floor(worldHeight / 2.5) : 3;
             
-            if (spawnChance) {
-                let target = getRandomItemFromPool();
-                let customPos = getRandPos();
-                
-                while (isOccupied(customPos) || (customPos.x === regularApple.x && customPos.y === regularApple.y)) {
-                    customPos = getRandPos();
-                }
-                
-                target.x = customPos.x;
-                target.y = customPos.y;
-                customItem = target;
-
-                customItemTimer = setTimeout(() => {
-                    if (isPlaying && !isPaused && customItem) {
-                        customItem = null; 
-                    }
-                }, 5000);
+            for (let i = 0; i < totalFoodCount; i++) {
+                let pos = getRandomEmptyPos();
+                let proto = premiumPool[Math.floor(Math.random() * premiumPool.length)];
+                items.push({ x: pos.x, y: pos.y, ...proto });
             }
         }
 
-        function update() {
-            if (isPaused) return;
-            animationFrame++;
+        function getRandomEmptyPos() {
+            let attempt = 0;
+            while(attempt < 200) {
+                let rx = Math.floor(Math.random() * worldWidth);
+                let ry = Math.floor(Math.random() * worldHeight);
+                let inSnake = snake.some(s => s.x === rx && s.y === ry);
+                let terrain = worldMap[ry] ? worldMap[ry][rx] : TERRAIN.WALL;
+                
+                if(!inSnake && terrain === TERRAIN.EMPTY) return {x: rx, y: ry};
+                attempt++;
+            }
+            return {x: 1, y: 1};
+        }
 
-            let nextX = snake[0].x + dx;
-            let nextY = snake[0].y + dy;
+        function updateLevelMetrics() {
+            let calculatedLevel = Math.min(10, Math.floor(snake.length / 10) + 1);
+            
+            if (isArcadeMode && calculatedLevel > currentLevel) {
+                currentLevel = calculatedLevel;
+                calculateWorldDimensions();
+                spawnResources();
+            } else if (!isArcadeMode) {
+                currentLevel = 1; // У класиці немає рівнів розширення
+            }
 
-            if (nextX < 0) nextX = colsCount - 1;
-            if (nextX >= colsCount) nextX = 0;
-            if (nextY < 0) nextY = rowsCount - 1;
-            if (nextY >= rowsCount) nextY = 0;
+            scoreElement.innerText = score;
+            levelElement.innerText = isArcadeMode ? currentLevel : 1;
+            lengthElement.innerText = snake.length;
+        }
 
-            const head = { x: nextX, y: nextY };
+        function centerCamera() {
+            if (!isArcadeMode) { cameraY = 0; return; }
+            let headY = snake[0].y;
+            if (headY - cameraY > viewRows - 4) {
+                cameraY = Math.min(worldHeight - viewRows, headY - viewRows + 4);
+            } else if (headY - cameraY < 3) {
+                cameraY = Math.max(0, headY - 3);
+            }
+        }
 
-            if (collision(head)) {
-                gameOver();
+        // Головне ядро руху
+        function step(targetDx, targetDy) {
+            if (!isPlaying) return;
+
+            let head = snake[0];
+            let nextX = head.x + targetDx;
+            let nextY = head.y + targetDy;
+
+            // Перевірка кордонів
+            if (nextX < 0 || nextX >= worldWidth || nextY < 0 || nextY >= worldHeight) {
+                if (!isArcadeMode) {
+                    gameOver("Ви вилетіли за межі поля! 🧱");
+                }
+                return; 
+            }
+
+            let targetTile = worldMap[nextY][nextX];
+            if (targetTile === TERRAIN.WALL) return;
+            if (targetTile === TERRAIN.FIRE) {
+                gameOver("Змійка згоріла у вогні! 🔥");
                 return;
             }
 
-            snake.unshift(head);
-            let roundFinished = false;
-
-            if (head.x === regularApple.x && head.y === regularApple.y) {
-                score += regularApple.value;
-                roundFinished = true;
-            } 
-            else if (customItem && head.x === customItem.x && head.y === customItem.y) {
-                roundFinished = true;
-                if (customItem.type === 'booster') {
-                    score += customItem.value;
-                    segmentsToAdd += (customItem.value - 1);
-                } else if (customItem.type === 'decreasor') {
-                    score = Math.max(0, score - customItem.value);
-                    let newLength = Math.max(1, snake.length - customItem.value);
-                    snake = snake.slice(0, newLength);
-                    segmentsToAdd = 0; 
-                }
+            if (snake.some((seg, idx) => idx !== 0 && seg.x === nextX && seg.y === nextY)) {
+                gameOver("Ви врізалися у власний хвіст! ☠️");
+                return;
             }
 
-            if (roundFinished) {
-                scoreElement.innerText = score;
-                startNewRound(); 
+            const newHead = { x: nextX, y: nextY };
+            snake.unshift(newHead);
+
+            let foodIdx = items.findIndex(item => item.x === nextX && item.y === nextY);
+            if (foodIdx !== -1) {
+                score += items[foodIdx].value;
+                items.splice(foodIdx, 1);
+                let pos = getRandomEmptyPos();
+                let proto = premiumPool[Math.floor(Math.random() * premiumPool.length)];
+                items.push({ x: pos.x, y: pos.y, ...proto });
+                updateLevelMetrics();
             } else {
-                if (segmentsToAdd > 0) {
-                    segmentsToAdd--;
-                } else {
-                    if (snake.length > 1) snake.pop();
-                }
+                snake.pop();
             }
 
+            centerCamera();
             draw();
         }
 
-        function collision(head) {
-            return snake.some((segment, index) => index !== 0 && segment.x === head.x && segment.y === head.y);
+        // Запуск класичного циклу автоматичного руху
+        function startClassicLoop() {
+            if (classicIntervalId) clearInterval(classicIntervalId);
+            classicIntervalId = setInterval(() => {
+                if (isPlaying) step(currentDirection.x, currentDirection.y);
+            }, 200); // Швидкість автоматичного кроку у класиці
         }
 
         function draw() {
-            ctx.fillStyle = "#111";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            const offsetX = (canvas.width - (colsCount * gridSize)) / 2;
-            const offsetY = (canvas.height - (rowsCount * gridSize)) / 2;
+            // Малюємо перешкоди (тільки для Аркади)
+            for (let y = 0; y < viewRows; y++) {
+                let actualY = y + cameraY;
+                if (actualY >= worldHeight) break;
 
-            snake.forEach((segment, index) => {
-                let x = offsetX + segment.x * gridSize;
-                let y = offsetY + segment.y * gridSize;
-                let size = gridSize;
+                for (let x = 0; x < worldWidth; x++) {
+                    let tile = worldMap[actualY][x];
+                    let renderX = x * gridSize;
+                    let renderY = y * gridSize;
 
-                ctx.save();
-                if (index === 0) {
-                    let pulse = Math.sin(animationFrame * 0.5) * 0.8;
-                    ctx.fillStyle = "#388E3C";
-                    ctx.beginPath();
-                    ctx.arc(x + gridSize/2, y + gridSize/2, (gridSize/2) + pulse, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    ctx.fillStyle = "white";
-                    let eyeSize = 3; let eyeOffset = 4;
-                    let eye1 = {x: 0, y: 0}, eye2 = {x: 0, y: 0};
-                    
-                    if (dx !== 0) {
-                        eye1 = { x: x + gridSize/2 + dx*4, y: y + gridSize/2 - eyeOffset };
-                        eye2 = { x: x + gridSize/2 + dx*4, y: y + gridSize/2 + eyeOffset };
-                    } else {
-                        eye1 = { x: x + gridSize/2 - eyeOffset, y: y + gridSize/2 + dy*4 };
-                        eye2 = { x: x + gridSize/2 + eyeOffset, y: y + gridSize/2 + dy*4 };
+                    if (tile === TERRAIN.WALL) {
+                        ctx.font = `${gridSize - 4}px Arial`;
+                        ctx.fillText("🧱", renderX + gridSize/2, renderY + gridSize/2);
+                    } else if (tile === TERRAIN.MUD) {
+                        ctx.fillStyle = "#3e2723";
+                        ctx.fillRect(renderX + 1, renderY + 1, gridSize - 2, gridSize - 2);
+                    } else if (tile === TERRAIN.FIRE) {
+                        ctx.font = `${gridSize - 4}px Arial`;
+                        ctx.fillText("🔥", renderX + gridSize/2, renderY + gridSize/2);
                     }
-                    ctx.beginPath();
-                    ctx.arc(eye1.x, eye1.y, eyeSize, 0, Math.PI*2);
-                    ctx.arc(eye2.x, eye2.y, eyeSize, 0, Math.PI*2);
-                    ctx.fill();
-
-                    ctx.fillStyle = "black";
-                    ctx.beginPath();
-                    ctx.arc(eye1.x + dx, eye1.y + dy, eyeSize/2, 0, Math.PI*2);
-                    ctx.arc(eye2.x + dx, eye2.y + dy, eyeSize/2, 0, Math.PI*2);
-                    ctx.fill();
-                } else {
-                    ctx.fillStyle = "#4CAF50";
-                    let radius = 6;
-                    if (index === snake.length - 1) {
-                        size = gridSize * 0.7;
-                        x += (gridSize - size) / 2; y += (gridSize - size) / 2;
-                        radius = 4;
-                    }
-                    ctx.beginPath();
-                    ctx.moveTo(x + radius, y); ctx.lineTo(x + size - radius, y);
-                    ctx.quadraticCurveTo(x + size, y, x + size, y + radius);
-                    ctx.lineTo(x + size, y + size - radius);
-                    ctx.quadraticCurveTo(x + size, y + size, x + size - radius, y + size);
-                    ctx.lineTo(x + radius, y + size - radius);
-                    ctx.quadraticCurveTo(x, y + size, x, y + size - radius);
-                    ctx.lineTo(x, y + radius); ctx.quadraticCurveTo(x, y, x + radius, y);
-                    ctx.closePath(); ctx.fill();
                 }
-                ctx.restore();
-            });
+            }
 
-            ctx.font = `${gridSize}px Arial`;
+            ctx.font = `${gridSize - 2}px Arial`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
 
-            ctx.fillText(regularApple.emoji, offsetX + regularApple.x * gridSize + gridSize/2, offsetY + regularApple.y * gridSize + gridSize/2);
+            // Їжа
+            items.forEach(item => {
+                let screenY = item.y - cameraY;
+                if (screenY >= 0 && screenY < viewRows) {
+                    ctx.fillText(item.emoji, item.x * gridSize + gridSize/2, screenY * gridSize + gridSize/2);
+                }
+            });
+
+            // Змійка
+            snake.forEach((segment, index) => {
+                let screenY = segment.y - cameraY;
+                if (screenY >= 0 && screenY < viewRows) {
+                    let rx = segment.x * gridSize;
+                    let ry = screenY * gridSize;
+
+                    if (index === 0) {
+                        ctx.fillStyle = isArcadeMode ? "#2E7D32" : "#0288D1";
+                        ctx.beginPath();
+                        ctx.arc(rx + gridSize/2, ry + gridSize/2, gridSize/2, 0, Math.PI*2);
+                        ctx.fill();
+                    } else {
+                        ctx.fillStyle = isArcadeMode ? 
+                            `hsl(120, 60%, ${Math.max(25, 50 - index * 2)}%)` : 
+                            `hsl(200, 70%, ${Math.max(30, 60 - index * 2)}%)`;
+                        ctx.beginPath();
+                        ctx.roundRect(rx + 2, ry + 2, gridSize - 4, gridSize - 4, 6);
+                        ctx.fill();
+                    }
+                }
+            });
+        }
+
+        function gameOver(msg) {
+            isPlaying = false;
+            if (classicIntervalId) clearInterval(classicIntervalId);
+            startScreen.innerHTML = `<h2>КІНЕЦЬ ГРИ 💀</h2><p style="color:#ff6b6b;">${msg}</p><p>Рахунок: <b>${score}</b></p><button class="start-btn" id="start-button" onclick="forceRestart()">ГРАТИ ЗНОВУ</button>`;
+            startScreen.style.display = "flex";
+        }
+
+        function forceRestart() {
+            initGame();
+            isPlaying = true;
+            startScreen.style.display = "none";
+            if (!isArcadeMode) startClassicLoop();
+        }
+
+        startButton.addEventListener("click", () => {
+            initGame();
+            isPlaying = true;
+            startScreen.style.display = "none";
+            if (!isArcadeMode) startClassicLoop();
+        });
+
+        restartButtonTop.addEventListener("click", () => { forceRestart(); });
+
+        // Обробка системного вводу напрямку/дії
+        function handleInputDirection(dx, dy) {
+            if (!isPlaying) return;
             
-            if (customItem) {
-                ctx.fillText(customItem.emoji, offsetX + customItem.x * gridSize + gridSize/2, offsetY + customItem.y * gridSize + gridSize/2);
+            if (isArcadeMode) {
+                // Аркадний покроковий режим двигуна
+                step(dx, dy);
+            } else {
+                // Запобігаємо розвороту у власний хвіст у класичному авто-русі
+                if ((dx !== 0 && currentDirection.x === -dx) || (dy !== 0 && currentDirection.y === -dy)) return;
+                currentDirection = { x: dx, y: dy };
             }
         }
 
-        function changeDirection(newDx, newDy) {
-            if (!isPlaying || isPaused) return;
-            if (newDx !== 0 && dx === 0) { dx = newDx; dy = 0; }
-            if (newDy !== 0 && dy === 0) { dx = 0; dy = newDy; }
-        }
+        const bindControl = (elementId, dx, dy) => {
+            const el = document.getElementById(elementId);
+            el.addEventListener("touchstart", (e) => { e.preventDefault(); handleInputDirection(dx, dy); }, {passive: false});
+            el.addEventListener("click", () => { handleInputDirection(dx, dy); });
+        };
 
-        document.getElementById("btn-up").addEventListener("click", () => changeDirection(0, -1));
-        document.getElementById("btn-down").addEventListener("click", () => changeDirection(0, 1));
-        document.getElementById("btn-left").addEventListener("click", () => changeDirection(-1, 0));
-        document.getElementById("btn-right").addEventListener("click", () => changeDirection(1, 0));
-        
-        pauseButton.addEventListener("click", togglePause);
-        startButton.addEventListener("click", startGame);
-        restartButtonTop.addEventListener("click", forceRestart);
+        bindControl("btn-up", 0, -1);
+        bindControl("btn-down", 0, 1);
+        bindControl("btn-left", -1, 0);
+        bindControl("btn-right", 1, 0);
 
         document.addEventListener("keydown", (e) => {
-            if (e.key === "ArrowUp" || e.key === "w") changeDirection(0, -1);
-            if (e.key === "ArrowDown" || e.key === "s") changeDirection(0, 1);
-            if (e.key === "ArrowLeft" || e.key === "a") changeDirection(-1, 0);
-            if (e.key === "ArrowRight" || e.key === "d") changeDirection(1, 0);
-            if (e.key === "p" || e.key === "P") togglePause();
-            if (e.key === "r" || e.key === "R") forceRestart();
+            switch(e.key.toLowerCase()) {
+                case "arrowup": case "w": case "ц": handleInputDirection(0, -1); break;
+                case "arrowdown": case "s": case "і": handleInputDirection(0, 1); break;
+                case "arrowleft": case "a": case "ф": handleInputDirection(-1, 0); break;
+                case "arrowright": case "d": case "в": handleInputDirection(1, 0); break;
+            }
         });
 
-        resizeCanvas();
         initGame();
     </script>
 </body>
